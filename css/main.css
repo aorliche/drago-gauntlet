@@ -18,3 +18,10 @@ canvas {
     border: 1px solid black;
     cursor: pointer;
 }
+#name, #levels {
+    min-width: 120px;
+}
+.lab1 {
+    display: inline-block;
+    width: 50px;
+}

@@ -40,7 +40,43 @@ window.addEventListener('load', () => {
                 i.classList.remove('selected');
             });
             item.classList.add('selected');
-            editor.switchPlacing(item.dataset.name);
+            editor.switchPlacing(item.innerText);
+        });
+    });
+
+    $('#save').addEventListener('click', () => {
+        const name = $('#name').value;
+        if (!name) {
+            alert('Please enter a name');
+            return;
+        }
+        const json = stage.save(name);
+        fetch('save.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: json
+        })
+        .then(res => res.text())
+        .then(data => {
+            alert(data);
+            if (data === 'Success') {
+                const opt = document.createElement('option');
+                opt.value = name + '.json';
+                opt.innerText = opt.value;
+                $('#levels').appendChild(opt);
+            }
+        });
+    });
+
+    $('#load').addEventListener('click', () => {
+        const lvl = $('#levels').value;
+        fetch(`levels/${lvl}`)
+        .then(res => res.json())
+        .then(data => {
+            stage.load(data);
+            editor.draw();
         });
     });
 });

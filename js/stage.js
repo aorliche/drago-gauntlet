@@ -1,6 +1,16 @@
 
 export {Editor, Stage};
 
+const basicColors = {
+    Tree: '#00ff00',
+    Rocks: '#aaaaaa',
+    Crate: '#ff8833',
+    Spider: '#aa00ff',
+    Delete: '#ff0000',
+    Player: '#0000ff',
+};
+
+// No instance methods to keep JSON serializable
 class Point {
     constructor(x, y) {
         this.x = x;
@@ -8,12 +18,16 @@ class Point {
     }
 }
 
+function clonePoint(p) {
+    return new Point(p.x, p.y);
+}
+
 class Editor {
     constructor(params) {
         this.posSpan = params.posSpan;
         this.stage = params.stage;
         this.stage.showGrid = true;
-        this.switchPlacing('terrain');
+        this.switchPlacing('Tree');
     }
 
     draw() {
@@ -75,47 +89,49 @@ class Editor {
 
     switchPlacing(name) {
         const p = this.placing ? this.placing.pos : new Point(0,0);
-        if (name === 'terrain') {
-            this.placing = new Terrain({pos: p, size: new Point(32,32), stage: this.stage});
-        } else if (name === 'background') {
-            this.placing = new Background({pos: p, size: new Point(32,32), stage: this.stage});
+        if (name === 'Tree' || name == 'Rocks') {
+            this.placing = new Terrain({pos: p, size: new Point(32,32), type: name, stage: this.stage});
+        } else if (name === 'Crate') {
+            this.placing = new Crate({pos: p, size: new Point(32,32), stage: this.stage});
+        } else if (name === 'Spider') {
+            this.placing = new Spider({pos: p, size: new Point(32,32), stage: this.stage});
+        } else if (name === 'Delete') {
+            this.placing = new Deleter({pos: p, size: new Point(32,32), stage: this.stage});
+        } else if (name === 'Player') {
+            this.placing = new Player({pos: p, size: new Point(32,32), stage: this.stage});
         }
     }
 
     tryPlace() {
-        if (this.placing instanceof Terrain) {
+        // Delete
+        if (this.placing instanceof Deleter) {
+            const actor = this.stage.collides(this.placing);
+            if (actor) {
+                this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
+            }
+            this.draw();
+            return;
+        } else {
             // Check for collisions
             if (this.stage.collides(this.placing)) {
                 console.log('Collision!');
                 return;
             }
-            this.stage.terrain.push(this.placing);
-            this.placing = new Terrain({
-                pos: new Point(
-                    this.placing.pos.x,
-                    this.placing.pos.y), 
-                size: new Point(32,32), 
-                stage: this.stage
-            });
-            this.draw();
-            console.log('Placed');
-        }
-        if (this.placing instanceof Background) {
-            // Check for collisions
-            const bg = this.stage.bgCollides(this.placing);
-            if (bg) {
-                this.stage.background.splice(this.stage.background.indexOf(bg), 1);
+            // Remove existing players
+            if (this.placing instanceof Player) {
+                const toRemove = [];
+                for (let actor of this.stage.actors) {
+                    if (actor instanceof Player) {
+                        toRemove.push(actor);
+                    }
+                }
+                for (let actor of toRemove) {
+                    this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
+                }
             }
-            this.stage.background.push(this.placing);
-            this.placing = new Background({
-                pos: new Point(
-                    this.placing.pos.x,
-                    this.placing.pos.y), 
-                size: new Point(32,32), 
-                stage: this.stage
-            });
+            this.stage.actors.push(this.placing);
+            this.placing = this.placing.clone();
             this.draw();
-            console.log(this.stage.background.length);
             console.log('Placed');
         }
     }
@@ -124,8 +140,6 @@ class Editor {
 class Stage {
     constructor(canvas) {
         this.actors = [];
-        this.terrain = [];
-        this.background = [];
         this.showGrid = false;
         this.pos = new Point(0,0);
         this.canvas = canvas;
@@ -133,17 +147,8 @@ class Stage {
         this.gridSize = 32;
     }
 
-    bgCollides(obj) {
-        for (let actor of this.background) {
-            if (actor.pos.x === obj.pos.x && actor.pos.y === obj.pos.y) {
-                return actor;
-            }
-        }
-        return null;
-    }
-
     collides(obj) {
-        for (let actor of this.actors.concat(this.terrain)) {
+        for (let actor of this.actors) {
             if (actor.pos.x === obj.pos.x && actor.pos.y === obj.pos.y) {
                 return actor;
             }
@@ -177,12 +182,42 @@ class Stage {
                 this.ctx.stroke();
             }
         }
-        this.background.forEach(obj => {
+        this.actors.forEach(obj => {
             obj.draw();
         });
-        this.terrain.forEach(obj => {
-            obj.draw();
-        });
+    }
+
+    load(json) {
+        this.actors = [];
+        for (let actor of json.actors) {
+            switch (actor.type) {
+                case 'Tree':
+                case 'Rock':
+                    this.actors.push(new Terrain(actor));
+                    break;
+                case 'Crate':
+                    this.actors.push(new Crate(actor));
+                    break;
+                case 'Spider':
+                    this.actors.push(new Spider(actor));
+                    break;
+                case 'Player':
+                    this.actors.push(new Player(actor));
+                    break;
+            }
+            this.actors.at(-1).stage = this;
+        }
+    }
+
+    save(name) {
+        for (let actor of this.actors) {
+            actor.stage = null;
+        }
+        const json = JSON.stringify({name, actors: this.actors});
+        for (let actor of this.actors) {
+            actor.stage = this;
+        }
+        return json;
     }
 
     snapToGrid(p) {
@@ -221,19 +256,101 @@ class Actor {
 class Terrain extends Actor {
     constructor(params) {
         super(params);
+        this.type = params.type;
+    }
+    
+    clone() {
+        return new Terrain({
+            pos: clonePoint(this.pos),
+            size: clonePoint(this.size),
+            stage: this.stage,
+            type: this.type,
+        });
     }
 
     draw() {
         const ctx = this.stage.ctx;
         const p = this.stage.xform(this.pos);
         ctx.save();
-        ctx.fillStyle = 'red';
+        ctx.fillStyle = basicColors[this.type];
         ctx.fillRect(p.x, p.y-this.size.y, this.size.x, this.size.y);
         ctx.restore();
     }
 }
 
-class Background extends Actor {
+class Crate extends Actor {
+    constructor(params) {
+        super(params);
+        this.type = 'Crate';
+    }
+    
+    clone() {
+        return new Crate({
+            pos: clonePoint(this.pos),
+            size: clonePoint(this.size),
+            stage: this.stage,
+        });
+    }
+
+    draw() {
+        const ctx = this.stage.ctx;
+        const p = this.stage.xform(this.pos);
+        ctx.save();
+        ctx.fillStyle = basicColors['Crate'];
+        ctx.fillRect(p.x, p.y-this.size.y, this.size.x, this.size.y);
+        ctx.restore();
+    }
+}
+
+class Spider extends Actor {
+    constructor(params) {
+        super(params);
+        this.type = 'Spider';
+    }
+    
+    clone() {
+        return new Spider({
+            pos: clonePoint(this.pos),
+            size: clonePoint(this.size),
+            stage: this.stage,
+        });
+    }
+
+    draw() {
+        const ctx = this.stage.ctx;
+        const p = this.stage.xform(this.pos);
+        ctx.save();
+        ctx.fillStyle = basicColors['Spider'];
+        ctx.fillRect(p.x, p.y-this.size.y, this.size.x, this.size.y);
+        ctx.restore();
+    }
+}
+
+class Player extends Actor {
+    constructor(params) {
+        super(params);
+        this.type = 'Player';
+    }
+
+    clone() {
+        return new Player({
+            pos: clonePoint(this.pos),
+            size: clonePoint(this.size),
+            stage: this.stage,
+        });
+    }
+    
+    draw() {
+        const ctx = this.stage.ctx;
+        const p = this.stage.xform(this.pos);
+        ctx.save();
+        ctx.fillStyle = basicColors['Player'];
+        ctx.fillRect(p.x, p.y-this.size.y, this.size.x, this.size.y);
+        ctx.restore();
+    }
+}
+
+class Deleter extends Actor {
     constructor(params) {
         super(params);
     }
@@ -242,7 +359,7 @@ class Background extends Actor {
         const ctx = this.stage.ctx;
         const p = this.stage.xform(this.pos);
         ctx.save();
-        ctx.fillStyle = 'blue';
+        ctx.fillStyle = basicColors['Delete'];
         ctx.fillRect(p.x, p.y-this.size.y, this.size.x, this.size.y);
         ctx.restore();
     }
