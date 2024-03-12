@@ -4,8 +4,9 @@ import {Editor, Stage} from './stage.js';
 
 window.addEventListener('load', () => {
     const canvas = $('#editor-canvas');
+    const miniMap = $('#editor-minimap');
     const posSpan = $('#editor-pos');
-    const stage = new Stage(canvas);
+    const stage = new Stage(canvas, miniMap);
     const editor = new Editor({stage, posSpan});
     editor.draw();
 

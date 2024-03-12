@@ -25,6 +25,7 @@ $files = array_diff($files, array('.', '..'));
             <div class='palette-item selected'>Rocks</div><br>
             <div class='palette-item'>Crate</div><br>
             <div class='palette-item'>Spider</div><br>
+            <div class='palette-item'>Ammo</div><br>
             <div class='palette-item'>Player</div><br>
             <div class='palette-item'>Delete</div><br>
             <label for='name' class='lab1'>Name:</label>            
@@ -37,6 +38,9 @@ $files = array_diff($files, array('.', '..'));
 <?php } ?>
             </select>
             <button id='load'>Load</button>
+        </div>
+        <div id='right'>
+            <canvas id="editor-minimap" width="200" height="200"></canvas>
         </div>
     </div>
 </body>
