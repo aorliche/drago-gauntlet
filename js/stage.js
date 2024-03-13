@@ -1,5 +1,7 @@
 
-export {Editor, Stage};
+import {drawText} from './util.js';
+
+export {Editor, Stage, Point};
 
 const basicColors = {
     Tree: '#00ff00',
@@ -346,6 +348,21 @@ class Actor {
         const y = this.pos.y + this.size.y/2;
         return new Point(x, y);
     }
+
+    wound(hp) {
+        if (!this.maxhp) {
+            return;
+        }
+        this.hp -= hp;
+        if (this.hp < 0) {
+            this.hp = 0;
+        }
+        if (this.hp <= 0) {
+            if (!(this instanceof Player)) {
+                this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
+            }
+        }
+    }
 }
 
 class Terrain extends Actor {
@@ -397,6 +414,7 @@ class Spider extends Actor {
         this.type = 'Spider';
         this.hp = params.hp ?? 3;
         this.maxhp = params.maxhp ?? 3;
+        this.lastts = 0;
     }
     
     clone() {
@@ -407,17 +425,35 @@ class Spider extends Actor {
         });
     }
 
-    tick() {
+    tick(ts) {
         const p = this.stage.player;
-        if (dist(p.pos, this.pos) > 300) {
+        if (ts - this.lastts < 20) {
             return;
         }
-    }
-
-    wound(hp) {
-        this.hp -= hp;
-        if (this.hp <= 0) {
-            this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
+        if (!p) {
+            return;
+        }
+        if (dist(p.pos, this.pos) > 200) {
+            return;
+        }
+        if (dist(p.pos, this.pos) <= this.stage.gridSize) {
+            this.lastts = ts;
+            p.wound(1);
+        } else {
+            const dx = p.pos.x - this.pos.x;
+            const dy = p.pos.y - this.pos.y;
+            const sav = clonePoint(this.pos);
+            if (Math.abs(dx) > 0) {
+                this.pos.x += Math.sign(dx)*this.stage.gridSize;
+            }
+            if (Math.abs(dy) > 0) {
+                this.pos.y += Math.sign(dy)*this.stage.gridSize;
+            }
+            const obj = this.stage.collides(this);
+            if (obj) {
+                this.pos = sav;
+            }
+            this.lastts = ts;
         }
     }
 }
@@ -433,6 +469,9 @@ class Player extends Actor {
         this.lastud = 1;
         this.lastts = 0;
         this.lastshot = 0;
+        this.ammo = params.ammo ?? 10;
+        this.hp = params.hp ?? 10;
+        this.maxhp = params.maxhp ?? this.hp;
     }
 
     clone() {
@@ -495,6 +534,9 @@ class Player extends Actor {
                         this.pos = sav;
                     }
                 }
+            } else if (obj && obj instanceof Ammo) {
+                this.ammo += obj.ammo;
+                this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
             } else if (obj) {
                 this.pos = sav;
             }
@@ -508,12 +550,16 @@ class Player extends Actor {
         if (ts - this.lastshot < 20) {
             return;
         }
-        this.shoot();
-        this.lastshot = ts;
+        if (this.shoot()) {
+            this.lastshot = ts;
+        }
     }
 
     shoot() {
         if (!this.shooting) {
+            return false;
+        }
+        if (this.ammo <= 0) {
             return false;
         }
         const p = clonePoint(this.pos);
@@ -526,6 +572,7 @@ class Player extends Actor {
             ud: this.lastud,
             shooter: this,
         }));
+        this.ammo -= 1;
         return true;
     }
 
@@ -547,6 +594,7 @@ class Ammo extends Actor {
     constructor(params) {
         super(params);
         this.type = 'Ammo';
+        this.ammo = params.ammo ?? Math.round(Math.random()*10);
     }
     
     clone() {
@@ -555,6 +603,15 @@ class Ammo extends Actor {
             size: clonePoint(this.size),
             stage: this.stage,
         });
+    }
+
+    draw() {
+        super.draw();
+        const ctx = this.stage.ctx;
+        const p = this.stage.xform(this.pos);
+        p.x += this.size.x/2;
+        p.y -= this.size.y/2-8;
+        drawText(ctx, this.ammo, p, 'black', '22px sans-serif');
     }
 }
 

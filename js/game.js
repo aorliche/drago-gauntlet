@@ -1,6 +1,6 @@
 
-import {$, $$} from './util.js';
-import {Stage} from './stage.js';
+import {$, $$, drawText} from './util.js';
+import {Point, Stage} from './stage.js';
 
 class Game {
     constructor(params) {
@@ -10,6 +10,12 @@ class Game {
     
     draw() {
         this.stage.draw();
+        if (this.stage.player) {
+            const ctx = this.stage.ctx;
+            const p = new Point(this.stage.canvas.width-100, 20);
+            p.ljust = true;
+            drawText(ctx, `Ammo: ${this.stage.player.ammo}`, p, 'black', '18px sans-serif');
+        }
     }
     
     keydown(e) {
@@ -89,7 +95,7 @@ class Game {
             }
             self.ts++;
             self.stage.tick(self.ts);
-            self.stage.draw();
+            self.draw();
             window.requestAnimationFrame(fn);
         }
         window.requestAnimationFrame(fn);
