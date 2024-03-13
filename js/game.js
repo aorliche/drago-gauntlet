@@ -108,7 +108,7 @@ window.addEventListener('load', () => {
     const stage = new Stage(canvas, miniMap);
     const game = new Game({stage});
         
-    fetch(`levels/L0.json`)
+    fetch(`levels/L1.json`)
     .then(res => res.json())
     .then(data => {
         stage.load(data);
