@@ -6,6 +6,7 @@ export {Editor, Stage, Point};
 const basicColors = {
     Tree: '#00ff00',
     Rocks: '#aaaaaa',
+    Water: '#aaaaff',
     Crate: '#ff8833',
     Spider: '#aa00ff',
     Ammo: '#ffff00',
@@ -96,7 +97,7 @@ class Editor {
 
     switchPlacing(name) {
         const p = this.placing ? this.placing.pos : new Point(0,0);
-        if (name === 'Tree' || name == 'Rocks') {
+        if (name === 'Tree' || name == 'Rocks' || name == 'Water') {
             this.placing = new Terrain({pos: p, size: new Point(32,32), type: name, stage: this.stage});
         } else if (name === 'Crate') {
             this.placing = new Crate({pos: p, size: new Point(32,32), stage: this.stage});
@@ -225,6 +226,7 @@ class Stage {
             switch (actor.type) {
                 case 'Tree':
                 case 'Rocks':
+                case 'Water':
                     this.actors.push(new Terrain(actor));
                     break;
                 case 'Crate':
@@ -400,7 +402,12 @@ class Crate extends Actor {
         this.pos.x += lr*this.size.x;
         this.pos.y += ud*this.size.y;
         const obj = this.stage.collides(this);
-        if (obj) {
+        if (obj && obj instanceof Terrain && obj.type === 'Water') {
+            // Crates fall into water
+            this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
+            this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
+            return true;
+        } else if (obj) {
             this.pos = sav;
             return false;
         }
@@ -533,6 +540,8 @@ class Player extends Actor {
                     if (!obj.move(this.lastlr, this.lastud)) {
                         this.pos = sav;
                     }
+                } else {
+                    this.pos = sav;
                 }
             } else if (obj && obj instanceof Ammo) {
                 this.ammo += obj.ammo;
@@ -649,7 +658,7 @@ class Arrow extends Actor {
         this.pos.x += 0.3*this.lr*this.stage.gridSize;
         this.pos.y += 0.3*this.ud*this.stage.gridSize;
         const obj = this.stage.collides(this);
-        if (obj) {
+        if (obj && !(obj.type === 'Water') && !(obj instanceof Ammo)) {
             this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
             if (obj instanceof Spider) {
                 obj.wound(1);

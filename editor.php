@@ -23,6 +23,7 @@ $files = array_diff($files, array('.', '..'));
             <div id='editor-pos'></div>
             <div class='palette-item'>Tree</div><br>
             <div class='palette-item selected'>Rocks</div><br>
+            <div class='palette-item'>Water</div><br>
             <div class='palette-item'>Crate</div><br>
             <div class='palette-item'>Spider</div><br>
             <div class='palette-item'>Ammo</div><br>
