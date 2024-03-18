@@ -9,6 +9,7 @@ const basicColors = {
     Water: '#aaaaff',
     Crate: '#ff8833',
     Spider: '#aa00ff',
+    Wizard: '#ff33ff',
     Ammo: '#ffff00',
     Delete: '#ff0000',
     Player: '#0000ff',
@@ -103,6 +104,8 @@ class Editor {
             this.placing = new Crate({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Spider') {
             this.placing = new Spider({pos: p, size: new Point(32,32), stage: this.stage});
+        } else if (name === 'Wizard') {
+            this.placing = new Wizard({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Delete') {
             this.placing = new Deleter({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Player') {
@@ -234,6 +237,9 @@ class Stage {
                     break;
                 case 'Spider':
                     this.actors.push(new Spider(actor));
+                    break;
+                case 'Wizard':
+                    this.actors.push(new Wizard(actor));
                     break;
                 case 'Player':
                     this.actors.push(new Player(actor));
@@ -465,6 +471,77 @@ class Spider extends Actor {
     }
 }
 
+class Wizard extends Actor {
+    constructor(params) {
+        super(params);
+        this.type = 'Wizard';
+        this.hp = params.hp ?? 2;
+        this.maxhp = params.maxhp ?? 2;
+        this.lastts = 0;
+    }
+    
+    clone() {
+        return new Wizard({
+            pos: clonePoint(this.pos),
+            size: clonePoint(this.size),
+            stage: this.stage,
+        });
+    }
+
+    tick(ts) {
+        const p = this.stage.player;
+        if (ts - this.lastts < 20) {
+            return;
+        }
+        if (!p) {
+            return;
+        }
+        if (dist(p.pos, this.pos) > 300) {
+            return;
+        }
+        const dx = p.pos.x - this.pos.x;
+        const dy = p.pos.y - this.pos.y;
+        if (Math.abs(dx) <= this.stage.gridSize-1) {
+            const p = clonePoint(this.pos);
+            p.x += this.size.x/2;
+            p.y += this.size.y/2;
+            this.stage.actors.push(new Arrow({
+                pos: p,
+                stage: this.stage,
+                lr: 0,
+                ud: Math.sign(dy),
+                shooter: this,
+            }));
+        } else if (Math.abs(dy) <= this.stage.gridSize-1) {
+            const p = clonePoint(this.pos);
+            p.x += this.size.x/2;
+            p.y += this.size.y/2;
+            this.stage.actors.push(new Arrow({
+                pos: p,
+                stage: this.stage,
+                lr: Math.sign(dx),
+                ud: 0,
+                shooter: this,
+            }));
+        } else if (Math.abs(dx) < Math.abs(dy)) {
+            const sav = clonePoint(this.pos);
+            this.pos.x += Math.sign(dx)*this.stage.gridSize;
+            const obj = this.stage.collides(this);
+            if (obj) {
+                this.pos = sav;
+            }
+        } else if (Math.abs(dy) <= Math.abs(dx)) {
+            const sav = clonePoint(this.pos);
+            this.pos.y += Math.sign(dy)*this.stage.gridSize;
+            const obj = this.stage.collides(this);
+            if (obj) {
+                this.pos = sav;
+            }
+        }
+        this.lastts = ts;
+    }
+}
+
 class Player extends Actor {
     constructor(params) {
         super(params);
@@ -660,7 +737,7 @@ class Arrow extends Actor {
         const obj = this.stage.collides(this);
         if (obj && !(obj.type === 'Water') && !(obj instanceof Ammo)) {
             this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
-            if (obj instanceof Spider) {
+            if (obj instanceof Spider || obj instanceof Player || obj instanceof Wizard) {
                 obj.wound(1);
             }
         }
