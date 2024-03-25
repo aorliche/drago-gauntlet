@@ -1,6 +1,13 @@
 <?php
 $files = scandir("levels");
 $files = array_diff($files, array('.', '..'));
+$levels = array();
+foreach ($files as $file) {
+    if (preg_match('/^L\\d+\\.json$/', $file)) {
+        array_push($levels, $file);
+    }
+}
+natsort($levels);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -11,19 +18,20 @@ $files = array_diff($files, array('.', '..'));
     <script src="js/stage.js" type='module'></script>
     <script src="js/util.js" type='module'></script>
     <script src="js/game.js" type='module'></script>
-    <title>The DragoVerse</title>
+    <title>DragoGauntlet</title>
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/game.css">
 </head>
 <body>
+    <h1>DragoGauntlet</h1>
     <div id="content">
         <div id="main">
             <canvas id="game-canvas" width="600" height="600"></canvas>
         </div>
         <div id="palette">
             <select id="levels">
-<?php foreach ($files as $file) { ?>
-                    <option value="<?= $file ?>"><?= $file ?></option>
+<?php foreach ($levels as $level) { ?>
+                    <option value="<?= $level ?>"><?= $level ?></option>
 <?php } ?>
             </select>
         </div>

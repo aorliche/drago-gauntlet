@@ -6,15 +6,25 @@ class Game {
     constructor(params) {
         this.stage = params.stage;
         this.stage.showGrid = false;
+        this.levels = params.levels;
+        this.levelIdx = 0;
     }
     
     draw() {
         this.stage.draw();
         if (this.stage.player) {
             const ctx = this.stage.ctx;
-            const p = new Point(this.stage.canvas.width-100, 20);
-            p.ljust = true;
-            drawText(ctx, `Ammo: ${this.stage.player.ammo}`, p, 'black', '18px sans-serif');
+            const pHealth = new Point(this.stage.canvas.width-120, 20);
+            const pArrows = new Point(this.stage.canvas.width-120, 40);
+            const pBalls = new Point(this.stage.canvas.width-120, 60);
+            const pLevel = new Point(this.stage.canvas.width/2, 20);
+            pHealth.ljust = true;
+            pArrows.ljust = true;
+            pBalls.ljust = true;
+            drawText(ctx, `Health: ${this.stage.player.hp}/${this.stage.player.maxhp}`, pHealth, 'black', '18px sans-serif');
+            drawText(ctx, `Arrows: ${this.stage.player.ammo}`, pArrows, 'black', '18px sans-serif');
+            drawText(ctx, `Fireballs: ${this.stage.player.fb}`, pBalls, 'black', '18px sans-serif');
+            drawText(ctx, `Level ${this.levels[this.levelIdx]}`, pLevel, 'black', '18px sans-serif');
         }
     }
     
@@ -42,6 +52,10 @@ class Game {
             this.stage.player.shooting = true;
             this.stage.player.shootNow(this.ts);
         }
+        if (e.key === 'Alt') {
+            this.stage.player.fbing = true;
+            this.stage.player.fireballNow(this.ts);
+        }
     }
 
     keyup(e) {
@@ -63,7 +77,9 @@ class Game {
         if (e.code === 'Space') {
             this.stage.player.shooting = false;
         }
-
+        if (e.key === 'Alt') {
+            this.stage.player.fbing = false;
+        }
     }
 
     loop(stop) {
@@ -105,15 +121,29 @@ class Game {
 window.addEventListener('load', () => {
     const canvas = $('#game-canvas');
     const miniMap = $('#game-minimap');
+    const levels = $$('#levels option').map(opt => opt.value);
     const stage = new Stage(canvas, miniMap);
-    const game = new Game({stage});
-        
-    fetch(`levels/L0.json`)
-    .then(res => res.json())
-    .then(data => {
-        stage.load(data);
-        game.loop();
-    });
+    const game = new Game({stage, levels});
+
+    function nextLevel(first) {
+        if (!first) {
+            game.levelIdx++;
+        }
+        if (game.levelIdx >= game.levels.length) {
+            game.levelIdx = 0;
+        }
+        fetch(`levels/${game.levels[game.levelIdx]}`)
+        .then(res => res.json())
+        .then(data => {
+            stage.load(data);
+            if (first) {
+                game.loop();
+            }
+        });
+    }
+
+    game.stage.nextLevelCb = nextLevel;
+    nextLevel(true);
 
     document.addEventListener('keydown', (e) => {
         game.keydown(e);

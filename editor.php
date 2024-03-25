@@ -29,6 +29,7 @@ $files = array_diff($files, array('.', '..'));
             <div class='palette-item'>Wizard</div><br>
             <div class='palette-item'>Ammo</div><br>
             <div class='palette-item'>Player</div><br>
+            <div class='palette-item'>Exit</div><br>
             <div class='palette-item'>Delete</div><br>
             <label for='name' class='lab1'>Name:</label>            
             <input type='text' id='name'>

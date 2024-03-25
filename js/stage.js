@@ -13,6 +13,7 @@ const basicColors = {
     Ammo: '#ffff00',
     Delete: '#ff0000',
     Player: '#0000ff',
+    Exit: '#ffaaaa',
 };
 
 // No instance methods to keep JSON serializable
@@ -112,6 +113,8 @@ class Editor {
             this.placing = new Player({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Ammo') {
             this.placing = new Ammo({pos: p, size: new Point(32,32), stage: this.stage});
+        } else if (name === 'Exit') {
+            this.placing = new Exit({pos: p, size: new Point(32,32), stage: this.stage});
         }
     }
 
@@ -142,6 +145,18 @@ class Editor {
                     this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
                 }
             }
+            // Remove existing exits
+            if (this.placing instanceof Exit) {
+                const toRemove = [];
+                for (let actor of this.stage.actors) {
+                    if (actor instanceof Exit) {
+                        toRemove.push(actor);
+                    }
+                }
+                for (let actor of toRemove) {
+                    this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
+                }
+            }
             this.stage.actors.push(this.placing);
             this.placing = this.placing.clone();
             this.draw();
@@ -164,11 +179,22 @@ class Stage {
     }
 
     collides(obj) {
+        const splash = [];
         for (let actor of this.actors) {
             if (actor === obj) {
                 continue;
             }
-            if (actor instanceof Arrow) {
+            if (actor instanceof Arrow || actor instanceof Fireball) {
+                continue;
+            }
+            // Stuff arrows or fireballs can't collide with
+            if (obj instanceof Arrow || obj instanceof Fireball) {
+                if (actor.type === 'Water' || actor instanceof Exit || actor instanceof Ammo) {
+                    continue;
+                }
+            }
+            // Ammos and exits can be stepped on by non-players
+            if ((actor instanceof Ammo || actor instanceof Exit) && !(obj instanceof Player)) {
                 continue;
             }
             // Old locked to grid
@@ -176,7 +202,7 @@ class Stage {
                 return actor;
             }
             // Projectiles
-            if (obj instanceof Arrow) {
+            if (obj instanceof Arrow || (obj instanceof Fireball && !obj.exploding)) {
                 if (actor == obj.shooter) {
                     continue;
                 }
@@ -187,6 +213,16 @@ class Stage {
                     return actor;
                 }
             }
+            // Exploding fireball
+            if (obj instanceof Fireball && obj.exploding) {
+                // Return all actors hit by fireball
+                if (dist(actor.rpos, obj.pos) < obj.radius) {
+                    splash.push(actor);
+                }
+            }
+        }
+        if (splash.length > 0) {
+            return splash;
         }
         return null;
     }
@@ -247,6 +283,9 @@ class Stage {
                     break;
                 case 'Ammo':
                     this.actors.push(new Ammo(actor));
+                    break;
+                case 'Exit':
+                    this.actors.push(new Exit(actor));
                     break;
             }
             this.actors.at(-1).stage = this;
@@ -446,7 +485,7 @@ class Spider extends Actor {
         if (!p) {
             return;
         }
-        if (dist(p.pos, this.pos) > 200) {
+        if (dist(p.pos, this.pos) > 300) {
             return;
         }
         if (dist(p.pos, this.pos) <= this.stage.gridSize) {
@@ -547,6 +586,7 @@ class Player extends Actor {
         super(params);
         this.type = 'Player';
         this.shooting = false;
+        this.fbing = false;
         this.lr = 0;
         this.ud = 0;
         this.lastlr = 0;
@@ -554,6 +594,7 @@ class Player extends Actor {
         this.lastts = 0;
         this.lastshot = 0;
         this.ammo = params.ammo ?? 10;
+        this.fb = params.fb ?? 4;
         this.hp = params.hp ?? 10;
         this.maxhp = params.maxhp ?? this.hp;
     }
@@ -564,6 +605,36 @@ class Player extends Actor {
             size: clonePoint(this.size),
             stage: this.stage,
         });
+    }
+
+    fireball() {
+        if (!this.fbing) {
+            return false;
+        }
+        if (this.fb <= 0) {
+            return false;
+        }
+        const p = clonePoint(this.pos);
+        p.x += this.size.x/2;
+        p.y += this.size.y/2;
+        this.stage.actors.push(new Fireball({
+            pos: p,
+            stage: this.stage,
+            lr: this.lastlr,
+            ud: this.lastud,
+            shooter: this,
+        }));
+        this.fb -= 1;
+        return true;
+    }
+    
+    fireballNow(ts) {
+        if (ts - this.lastshot < 20) {
+            return;
+        }
+        if (this.fireball()) {
+            this.lastshot = ts;
+        }
     }
 
     moveNow(ts) {
@@ -612,6 +683,7 @@ class Player extends Actor {
         if (moved) {
             const obj = this.stage.collides(this);
             if (obj && obj instanceof Crate) {
+                // Shove a crate
                 // Can't shove crates diagonally
                 if (this.lastlr === 0 || this.lastud === 0) {
                     if (!obj.move(this.lastlr, this.lastud)) {
@@ -620,9 +692,15 @@ class Player extends Actor {
                 } else {
                     this.pos = sav;
                 }
+                // Pick up ammo
             } else if (obj && obj instanceof Ammo) {
                 this.ammo += obj.ammo;
                 this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
+            } else if (obj && obj instanceof Exit) {
+                // Reach an exit
+                if (this.stage.nextLevelCb) {
+                    this.stage.nextLevelCb();
+                }
             } else if (obj) {
                 this.pos = sav;
             }
@@ -671,7 +749,9 @@ class Player extends Actor {
         if (ts - this.lastshot > 20) {
             if (this.shoot()) {
                 this.lastshot = ts;
-            }
+            } else if (this.fireball()) {
+                this.lastshot = ts;
+            }   
         }
     }
 }
@@ -698,6 +778,68 @@ class Ammo extends Actor {
         p.x += this.size.x/2;
         p.y -= this.size.y/2-8;
         drawText(ctx, this.ammo, p, 'black', '22px sans-serif');
+    }
+}
+
+class Fireball extends Actor {
+    constructor(params) {
+        super(params);
+        this.type = 'Fireball';
+        this.lr = params.lr;
+        this.ud = params.ud;
+        this.radius = 10;
+        this.shooter = params.shooter;
+        this.hurt = [];
+    }
+    
+    clone() {
+        return new Fireball({
+            pos: clonePoint(this.pos),
+            stage: this.stage,
+            lr: this.lr,
+            ud: this.ud,
+        });
+    }
+    
+    draw() {
+        const ctx = this.stage.ctx;
+        const p = this.stage.xform(this.pos);
+        ctx.save();
+        ctx.strokeStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, this.radius, 0, 2*Math.PI);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+    }
+    
+    tick() {
+        if (this.exploding) {
+            this.radius += 20;
+            if (this.radius > 100) {
+                this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
+            }
+            const splash = this.stage.collides(this);
+            for (const a of splash) {
+                if (this.hurt.includes(a)) {
+                    continue;
+                }
+                if (a instanceof Crate) {
+                    this.stage.actors.splice(this.stage.actors.indexOf(a), 1);
+                }
+                if (a instanceof Spider || a instanceof Wizard || a instanceof Player) {
+                    a.wound(2);
+                    this.hurt.push(a);
+                }
+            }
+            return;
+        }
+        this.pos.x += 0.3*this.lr*this.stage.gridSize;
+        this.pos.y += 0.3*this.ud*this.stage.gridSize;
+        const obj = this.stage.collides(this);
+        if (obj) {
+            this.exploding = true;
+        }
     }
 }
 
@@ -735,7 +877,7 @@ class Arrow extends Actor {
         this.pos.x += 0.3*this.lr*this.stage.gridSize;
         this.pos.y += 0.3*this.ud*this.stage.gridSize;
         const obj = this.stage.collides(this);
-        if (obj && !(obj.type === 'Water') && !(obj instanceof Ammo)) {
+        if (obj) {
             this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
             if (obj instanceof Spider || obj instanceof Player || obj instanceof Wizard) {
                 obj.wound(1);
@@ -748,5 +890,20 @@ class Deleter extends Actor {
     constructor(params) {
         super(params);
         this.type = 'Delete';
+    }
+}
+
+class Exit extends Actor {
+    constructor(params) {
+        super(params);
+        this.type = 'Exit';
+    }
+    
+    clone() {
+        return new Exit({
+            pos: clonePoint(this.pos),
+            size: clonePoint(this.size),
+            stage: this.stage,
+        });
     }
 }
