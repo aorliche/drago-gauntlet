@@ -1,2 +1,2 @@
-# space-gauntlet-scroller
-A basic top down scrolling 2D shooter with a space theme
+# Drago's Gauntlet
+A 2D top-down Rogue-like adventure game, with level editor, written in Javascript
