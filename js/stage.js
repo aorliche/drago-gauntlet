@@ -11,6 +11,7 @@ const basicColors = {
     Crate: '#ff8833',
     Spider: '#aa00ff',
     Wizard: '#ff33ff',
+    BigBoy: '#000000',
     Health: '#ffff00',
     Arrows: '#ffff00',
     Fireballs: '#ffff00',
@@ -19,6 +20,8 @@ const basicColors = {
     Player: '#0000ff',
     Exit: '#ffaaaa',
 };
+
+const bgColor = '#ffffff';
 
 // No instance methods to keep JSON serializable
 class Point {
@@ -34,6 +37,13 @@ function clonePoint(p) {
 
 function dist(p1, p2) {
     return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+}
+
+function posStr(p, stage) {
+    const x = p.x/stage.gridSize;
+    const y = p.y/stage.gridSize;
+    const str = x.toString() + ',' + y.toString();
+    return str;
 }
 
 class Editor {
@@ -111,6 +121,8 @@ class Editor {
             this.placing = new Spider({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Wizard') {
             this.placing = new Wizard({pos: p, size: new Point(32,32), stage: this.stage});
+        } else if (name === 'BigBoy') {
+            this.placing = new BigBoy({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Delete') {
             this.placing = new Deleter({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Player') {
@@ -172,6 +184,7 @@ class Editor {
 class Stage {
     constructor(canvas, miniMap) {
         this.actors = [];
+        this.grid = {};
         this.showGrid = false;
         this.pos = new Point(0,0);
         this.canvas = canvas;
@@ -184,9 +197,26 @@ class Stage {
 
     collides(obj) {
         const splash = [];
-        for (let actor of this.actors) {
+        const actors = [];
+        // Split BigBoy into multiple actors
+        for (const actor of this.actors) {
+            if (actor instanceof BigBoy) {
+                for (const a of actor.parts) {
+                    actors.push(a);
+                }
+            } else {
+                actors.push(actor);
+            }
+        }
+        for (const actor of actors) {
             if (actor === obj) {
                 continue;
+            }
+            // BigBoy can't collide with themselves
+            if (actor instanceof BigBoyPart && obj instanceof BigBoyPart) {
+                if (actor.whole == obj.whole) {
+                    continue;
+                }
             }
             // Delete can collide with everything
             if (!(obj instanceof Deleter)) {
@@ -235,8 +265,14 @@ class Stage {
     }
 
     draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.miniCtx.clearRect(0, 0, this.miniMap.width, this.miniMap.height);
+        this.ctx.save();
+        this.ctx.fillStyle = bgColor;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+        this.miniCtx.save();
+        this.miniCtx.fillStyle = bgColor;
+        this.miniCtx.fillRect(0, 0, this.miniMap.width, this.miniMap.height);
+        this.miniCtx.restore();
         if (this.showGrid) {
             let sx = this.pos.x-this.canvas.width/2 - this.gridSize;
             sx = sx - (sx % this.gridSize);
@@ -284,6 +320,9 @@ class Stage {
                     break;
                 case 'Wizard':
                     this.actors.push(new Wizard(actor));
+                    break;
+                case 'BigBoy':
+                    this.actors.push(new BigBoy(actor));
                     break;
                 case 'Player':
                     this.actors.push(new Player(actor));
@@ -361,9 +400,9 @@ class Stage {
 
 class Actor {
     constructor(params) {
+        this.stage = params.stage;
         this.pos = params.pos;
         this.size = params.size;
-        this.stage = params.stage;
     }
 
     draw() {
@@ -408,7 +447,7 @@ class Actor {
     }
 
     wound(hp) {
-        if (!this.maxhp) {
+        if (!this.maxhp && this.maxhp !== 0) {
             return;
         }
         this.hp -= hp;
@@ -592,6 +631,98 @@ class Wizard extends Actor {
     }
 }
 
+class BigBoyPart extends Actor {
+    constructor(params) {
+        super(params);
+        this.whole = params.whole;
+        this.stage = params.whole.stage;
+        this.type = 'BigBoy';
+    }
+}
+
+class BigBoy extends Actor {
+    constructor(params) {
+        super(params);
+        this.type = 'BigBoy';
+        this.hp = params.hp ?? 10;
+        this.maxhp = params.maxhp ?? 10;
+        this.lastts = 0;
+    }
+    
+    clone() {
+        return new BigBoy({
+            pos: clonePoint(this.pos),
+            size: clonePoint(this.size),
+            stage: this.stage,
+        });
+    }
+
+    draw() {
+        this.parts.forEach(part => part.draw());
+        if (this.hp < this.maxhp) {
+            this.drawHealth();
+        }
+    }
+    
+    drawHealth() {
+        const ctx = this.stage.ctx;
+        let p = clonePoint(this.pos);
+        p.y = p.y + 2*this.size.y;
+        p = this.stage.xform(p);
+        ctx.save();
+        ctx.fillStyle = 'green';
+        ctx.fillRect(p.x, p.y, 2*this.size.x, 10);
+        ctx.fillStyle = 'red';
+        ctx.fillRect(p.x + 2 * this.size.x * this.hp/this.maxhp, p.y, 2 * this.size.x * (1 - this.hp/this.maxhp), 10);
+        ctx.restore();
+    }
+
+    get parts() {
+        return [
+            new BigBoyPart({pos: new Point(this.pos.x, this.pos.y), size: this.size, whole: this}),
+            new BigBoyPart({pos: new Point(this.pos.x+this.size.x, this.pos.y), size: this.size, whole: this}),
+            new BigBoyPart({pos: new Point(this.pos.x+this.size.x, this.pos.y+this.size.y), size: this.size, whole: this}),
+            new BigBoyPart({pos: new Point(this.pos.x, this.pos.y+this.size.y), size: this.size, whole: this}),
+        ];
+    }
+
+    tick(ts) {
+        const p = this.stage.player;
+        const pos = new Point(this.pos.x+this.size.x, this.pos.y+this.size.y);
+        if (ts - this.lastts < 20) {
+            return;
+        }
+        if (!p) {
+            return;
+        }
+        if (dist(p.pos, pos) > 300) {
+            return;
+        }
+        if (dist(p.pos, pos) <= 2*this.stage.gridSize) {
+            this.lastts = ts;
+            p.wound(1);
+        } else {
+            const dx = p.pos.x - pos.x;
+            const dy = p.pos.y - pos.y;
+            const sav = clonePoint(this.pos);
+            if (Math.abs(dx) > 0) {
+                this.pos.x += Math.sign(dx)*this.stage.gridSize;
+            }
+            if (Math.abs(dy) > 0) {
+                this.pos.y += Math.sign(dy)*this.stage.gridSize;
+            }
+            for (const part of this.parts) {
+                const obj = this.stage.collides(part);
+                if (obj) {
+                    this.pos = sav;
+                    break;
+                }
+            }
+            this.lastts = ts;
+        }
+    }
+}
+
 class Player extends Actor {
     constructor(params) {
         super(params);
@@ -709,7 +840,9 @@ class Player extends Actor {
                 switch (obj.type) {
                     case 'Health': {
                         this.hp += obj.ammo; 
-                        if (this.maxhp) this.hp = this.maxhp;
+                        if (this.hp > this.maxhp) {
+                            this.hp = this.maxhp;
+                        }
                         break;
                     }
                     case 'Arrows': {
@@ -888,14 +1021,17 @@ class Fireball extends Actor {
                 this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
             }
             const splash = this.stage.collides(this);
-            for (const a of splash) {
+            for (let a of splash) {
+                if (a instanceof BigBoyPart) {
+                    a = a.whole;
+                }
                 if (this.hurt.includes(a)) {
                     continue;
                 }
                 if (a instanceof Crate) {
                     this.stage.actors.splice(this.stage.actors.indexOf(a), 1);
                 }
-                if (a instanceof Spider || a instanceof Wizard || a instanceof Player) {
+                if (a instanceof Spider || a instanceof Wizard || a instanceof BigBoy || a instanceof Player) {
                     a.wound(2);
                     this.hurt.push(a);
                 }
@@ -949,6 +1085,9 @@ class Arrow extends Actor {
             this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
             if (obj instanceof Spider || obj instanceof Player || obj instanceof Wizard) {
                 obj.wound(1);
+            }
+            if (obj instanceof BigBoyPart) {
+                obj.whole.wound(1);
             }
         }
     }

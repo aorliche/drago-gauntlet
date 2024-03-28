@@ -27,6 +27,7 @@ $files = array_diff($files, array('.', '..'));
             <div class='palette-item'>Crate</div><br>
             <div class='palette-item'>Spider</div><br>
             <div class='palette-item'>Wizard</div><br>
+            <div class='palette-item'>BigBoy</div><br>
             <div class='palette-item'>Health</div><br>
             <div class='palette-item'>Arrows</div><br>
             <div class='palette-item'>Fireballs</div><br>
