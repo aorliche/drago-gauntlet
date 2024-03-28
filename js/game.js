@@ -17,13 +17,16 @@ class Game {
             const pHealth = new Point(this.stage.canvas.width-120, 20);
             const pArrows = new Point(this.stage.canvas.width-120, 40);
             const pBalls = new Point(this.stage.canvas.width-120, 60);
+            const pKeys = new Point(this.stage.canvas.width-120, 80);
             const pLevel = new Point(this.stage.canvas.width/2, 20);
             pHealth.ljust = true;
             pArrows.ljust = true;
             pBalls.ljust = true;
+            pKeys.ljust = true;
             drawText(ctx, `Health: ${this.stage.player.hp}/${this.stage.player.maxhp}`, pHealth, 'black', '18px sans-serif');
-            drawText(ctx, `Arrows: ${this.stage.player.ammo}`, pArrows, 'black', '18px sans-serif');
+            drawText(ctx, `Arrows: ${this.stage.player.arrows}`, pArrows, 'black', '18px sans-serif');
             drawText(ctx, `Fireballs: ${this.stage.player.fb}`, pBalls, 'black', '18px sans-serif');
+            drawText(ctx, `Keys: ${this.stage.player.keys}`, pKeys, 'black', '18px sans-serif');
             drawText(ctx, `Level ${this.levels[this.levelIdx]}`, pLevel, 'black', '18px sans-serif');
         }
     }
@@ -135,9 +138,15 @@ window.addEventListener('load', () => {
         fetch(`levels/${game.levels[game.levelIdx]}`)
         .then(res => res.json())
         .then(data => {
-            stage.load(data);
             if (first) {
+                // Start loop
+                stage.load(data);
                 game.loop();
+            } else {
+                // Copy player health and items
+                const st = stage.player.state;
+                stage.load(data);
+                stage.player.state = st;
             }
         });
     }

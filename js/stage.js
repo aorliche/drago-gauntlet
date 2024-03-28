@@ -7,10 +7,14 @@ const basicColors = {
     Tree: '#00ff00',
     Rocks: '#aaaaaa',
     Water: '#aaaaff',
+    Door: '#88ccff',
     Crate: '#ff8833',
     Spider: '#aa00ff',
     Wizard: '#ff33ff',
-    Ammo: '#ffff00',
+    Health: '#ffff00',
+    Arrows: '#ffff00',
+    Fireballs: '#ffff00',
+    Key: '#ffff00',
     Delete: '#ff0000',
     Player: '#0000ff',
     Exit: '#ffaaaa',
@@ -99,7 +103,7 @@ class Editor {
 
     switchPlacing(name) {
         const p = this.placing ? this.placing.pos : new Point(0,0);
-        if (name === 'Tree' || name == 'Rocks' || name == 'Water') {
+        if (name === 'Tree' || name == 'Rocks' || name == 'Water' || name == 'Door') {
             this.placing = new Terrain({pos: p, size: new Point(32,32), type: name, stage: this.stage});
         } else if (name === 'Crate') {
             this.placing = new Crate({pos: p, size: new Point(32,32), stage: this.stage});
@@ -111,8 +115,8 @@ class Editor {
             this.placing = new Deleter({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Player') {
             this.placing = new Player({pos: p, size: new Point(32,32), stage: this.stage});
-        } else if (name === 'Ammo') {
-            this.placing = new Ammo({pos: p, size: new Point(32,32), stage: this.stage});
+        } else if (name === 'Arrows' || name === 'Fireballs' || name === 'Health' || name == 'Key') {
+            this.placing = new Ammo({pos: p, size: new Point(32,32), type: name, stage: this.stage});
         } else if (name === 'Exit') {
             this.placing = new Exit({pos: p, size: new Point(32,32), stage: this.stage});
         }
@@ -184,18 +188,21 @@ class Stage {
             if (actor === obj) {
                 continue;
             }
-            if (actor instanceof Arrow || actor instanceof Fireball) {
-                continue;
-            }
-            // Stuff arrows or fireballs can't collide with
-            if (obj instanceof Arrow || obj instanceof Fireball) {
-                if (actor.type === 'Water' || actor instanceof Exit || actor instanceof Ammo) {
+            // Delete can collide with everything
+            if (!(obj instanceof Deleter)) {
+                if (actor instanceof Arrow || actor instanceof Fireball) {
                     continue;
                 }
-            }
-            // Ammos and exits can be stepped on by non-players
-            if ((actor instanceof Ammo || actor instanceof Exit) && !(obj instanceof Player)) {
-                continue;
+                // Stuff arrows or fireballs can't collide with
+                if (obj instanceof Arrow || obj instanceof Fireball) {
+                    if (actor.type === 'Water' || actor instanceof Exit || actor instanceof Ammo) {
+                        continue;
+                    }
+                }
+                // Ammos and exits can be stepped on by non-players
+                if ((actor instanceof Ammo || actor instanceof Exit) && !(obj instanceof Player)) {
+                    continue;
+                }
             }
             // Old locked to grid
             if (actor.pos.x === obj.pos.x && actor.pos.y === obj.pos.y) {
@@ -221,7 +228,7 @@ class Stage {
                 }
             }
         }
-        if (splash.length > 0) {
+        if (obj instanceof Fireball && obj.exploding) {
             return splash;
         }
         return null;
@@ -266,6 +273,7 @@ class Stage {
                 case 'Tree':
                 case 'Rocks':
                 case 'Water':
+                case 'Door':
                     this.actors.push(new Terrain(actor));
                     break;
                 case 'Crate':
@@ -281,7 +289,10 @@ class Stage {
                     this.actors.push(new Player(actor));
                     this.player = this.actors.at(-1);
                     break;
-                case 'Ammo':
+                case 'Arrows':
+                case 'Fireballs':
+                case 'Health':
+                case 'Key':
                     this.actors.push(new Ammo(actor));
                     break;
                 case 'Exit':
@@ -593,9 +604,10 @@ class Player extends Actor {
         this.lastud = 1;
         this.lastts = 0;
         this.lastshot = 0;
-        this.ammo = params.ammo ?? 10;
+        this.arrows = params.arrows ?? 10;
         this.fb = params.fb ?? 4;
         this.hp = params.hp ?? 10;
+        this.keys = params.keys ?? 0;
         this.maxhp = params.maxhp ?? this.hp;
     }
 
@@ -694,13 +706,35 @@ class Player extends Actor {
                 }
                 // Pick up ammo
             } else if (obj && obj instanceof Ammo) {
-                this.ammo += obj.ammo;
+                switch (obj.type) {
+                    case 'Health': {
+                        this.hp += obj.ammo; 
+                        if (this.maxhp) this.hp = this.maxhp;
+                        break;
+                    }
+                    case 'Arrows': {
+                        this.arrows += obj.ammo;
+                        break;
+                    }
+                    case 'Fireballs': {
+                        this.fb += obj.ammo;
+                        break;
+                    }
+                    case 'Key': {
+                        this.keys += obj.ammo;
+                        break;
+                    }
+                }
                 this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
             } else if (obj && obj instanceof Exit) {
                 // Reach an exit
                 if (this.stage.nextLevelCb) {
                     this.stage.nextLevelCb();
                 }
+            } else if (obj && obj.type === 'Door' && this.keys) {
+                // Open a door
+                this.keys -= 1;
+                this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
             } else if (obj) {
                 this.pos = sav;
             }
@@ -723,7 +757,7 @@ class Player extends Actor {
         if (!this.shooting) {
             return false;
         }
-        if (this.ammo <= 0) {
+        if (this.arrows <= 0) {
             return false;
         }
         const p = clonePoint(this.pos);
@@ -736,8 +770,22 @@ class Player extends Actor {
             ud: this.lastud,
             shooter: this,
         }));
-        this.ammo -= 1;
+        this.arrows -= 1;
         return true;
+    }
+
+    get state() {
+        return {
+            hp: this.hp,
+            arrows: this.arrows,
+            fb: this.fb,
+        }
+    }
+
+    set state(st) {
+        this.hp = st.hp;    
+        this.arrows = st.arrows;
+        this.fb = st.fb;
     }
 
     tick(ts) {
@@ -759,8 +807,25 @@ class Player extends Actor {
 class Ammo extends Actor {
     constructor(params) {
         super(params);
-        this.type = 'Ammo';
-        this.ammo = params.ammo ?? Math.round(Math.random()*10);
+        this.type = params.type;
+        switch (this.type) {
+            case 'Health': {
+                this.ammo = params.ammo ?? Math.ceil(Math.random()*5);
+                break;
+            }
+            case 'Arrows': {
+                this.ammo = params.ammo ?? Math.ceil(Math.random()*10);
+                break;
+            }
+            case 'Fireballs': {
+                this.ammo = params.ammo ?? Math.ceil(Math.random()*3);
+                break;
+            }
+            case 'Key': {
+                this.ammo = 1;
+                break;
+            }
+        }
     }
     
     clone() {
@@ -768,6 +833,8 @@ class Ammo extends Actor {
             pos: clonePoint(this.pos),
             size: clonePoint(this.size),
             stage: this.stage,
+            type: this.type,
+            ammo: this.ammo,
         });
     }
 
@@ -775,9 +842,10 @@ class Ammo extends Actor {
         super.draw();
         const ctx = this.stage.ctx;
         const p = this.stage.xform(this.pos);
+        const letter = this.type[0];
         p.x += this.size.x/2;
         p.y -= this.size.y/2-8;
-        drawText(ctx, this.ammo, p, 'black', '22px sans-serif');
+        drawText(ctx, `${letter}:${this.ammo}`, p, 'black', '22px sans-serif');
     }
 }
 
