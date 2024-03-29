@@ -1,7 +1,7 @@
 
 import {drawText} from './util.js';
 
-export {Editor, Stage, Point};
+export {clonePoint, Editor, Stage, Point};
 
 const basicColors = {
     Tree: '#00ff00',
@@ -139,7 +139,11 @@ class Editor {
         if (this.placing instanceof Deleter) {
             const actor = this.stage.collides(this.placing);
             if (actor) {
-                this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
+                if (actor instanceof BigBoyPart) {
+                    this.stage.actors.splice(this.stage.actors.indexOf(actor.whole), 1);
+                } else {
+                    this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
+                }
             }
             this.draw();
             return;

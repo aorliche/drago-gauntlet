@@ -1,6 +1,6 @@
 
 import {$, $$, drawText} from './util.js';
-import {Point, Stage} from './stage.js';
+import {clonePoint, Point, Stage} from './stage.js';
 
 class Game {
     constructor(params) {
@@ -148,6 +148,7 @@ window.addEventListener('load', () => {
                 stage.load(data);
                 stage.player.state = st;
             }
+            stage.pos = clonePoint(stage.player.pos);
         });
     }
 

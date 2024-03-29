@@ -1,6 +1,6 @@
 
 import {$, $$} from './util.js';
-import {Editor, Stage} from './stage.js';
+import {clonePoint, Editor, Stage} from './stage.js';
 
 window.addEventListener('load', () => {
     const canvas = $('#editor-canvas');
@@ -77,7 +77,11 @@ window.addEventListener('load', () => {
         .then(res => res.json())
         .then(data => {
             stage.load(data);
+            if (stage.player) {
+                stage.pos = clonePoint(stage.player.pos);
+            }
             editor.draw();
+            $('#name').value = lvl.replace('.json', '');
         });
     });
 });
