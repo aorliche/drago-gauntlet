@@ -14,6 +14,10 @@ window.addEventListener('load', () => {
         editor.keydown(e);
     });
 
+    miniMap.addEventListener('click', (e) => {
+        editor.minimapclick(e);
+    });
+
     canvas.addEventListener('mousemove', (e) => {
         editor.mousemove(e);
     });

@@ -63,21 +63,27 @@ class Editor {
     
     keydown(e) {
         if (e.key === 'ArrowLeft') {
-            this.stage.pos.x -= 5;
+            this.stage.pos.x -= 20;
             this.draw();
         }
         if (e.key === 'ArrowRight') {
-            this.stage.pos.x += 5;
+            this.stage.pos.x += 20;
             this.draw();
         }
         if (e.key === 'ArrowUp') {
-            this.stage.pos.y += 5;
+            this.stage.pos.y += 20;
             this.draw();
         }
         if (e.key === 'ArrowDown') {
-            this.stage.pos.y -= 5;
+            this.stage.pos.y -= 20;
             this.draw();
         }
+    }
+    
+    minimapclick(e) {
+        const p = this.stage.xformClientMini(new Point(e.offsetX, e.offsetY));
+        this.stage.pos = p;
+        this.draw();
     }
     
     mousedown(e) {
@@ -390,8 +396,10 @@ class Stage {
         const cy = this.pos.y/this.gridSize;
         const px = p.x/this.gridSize;
         const py = p.y/this.gridSize;
-        const x = px - cx + this.miniMap.width/2;
-        const y = cy - py + this.miniMap.height/2;
+        //const x = px - cx + this.miniMap.width/2;
+        //const y = cy - py + this.miniMap.height/2;
+        const x = px + this.miniMap.width/2;
+        const y = this.miniMap.height/2 - py;
         return new Point(x, y);
     }
 
@@ -399,6 +407,14 @@ class Stage {
         const x = p.x + this.pos.x - this.canvas.width/2;
         const y = this.pos.y - p.y + this.canvas.height/2;
         return new Point(x, y);
+    }
+
+    xformClientMini(p) {
+        let px = p.x - this.miniMap.width/2;
+        let py = this.miniMap.height/2 - p.y;
+        px = px * this.gridSize;
+        py = py * this.gridSize;
+        return new Point(px, py);
     }
 }
 
