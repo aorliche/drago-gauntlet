@@ -21,7 +21,7 @@ const basicColors = {
     Exit: '#ffaaaa',
 };
 
-const bgColor = '#ffffff';
+const bgColor = '#bbffaa';
 
 // No instance methods to keep JSON serializable
 class Point {
@@ -203,6 +203,7 @@ class Stage {
         this.miniMap = miniMap;
         this.miniCtx = miniMap.getContext('2d');
         this.player = null;
+        this.loadSprites();
     }
 
     collides(obj) {
@@ -314,6 +315,7 @@ class Stage {
 
     load(json) {
         this.actors = [];
+        this.grid = {};
         for (let actor of json.actors) {
             switch (actor.type) {
                 case 'Tree':
@@ -321,6 +323,7 @@ class Stage {
                 case 'Water':
                 case 'Door':
                     this.actors.push(new Terrain(actor));
+                    this.grid[posStr(this.actors.at(-1).pos, this)] = this.actors.at(-1);
                     break;
                 case 'Crate':
                     this.actors.push(new Crate(actor));
@@ -349,6 +352,23 @@ class Stage {
                     break;
             }
             this.actors.at(-1).stage = this;
+        }
+    }
+
+    loadSprites() {
+        this.sprites = {};
+        const waters = ['Water', 'WaterL', 'WaterR', 'WaterU', 'WaterD', 'WaterLRU', 'WaterRUD', 'WaterLUD', 'WaterLRD', 'WaterLU', 'WaterLR', 'WaterRD', 'WaterLD', 'WaterUD', 'WaterRU'];
+        const toLoad = waters;
+        for (const actor in basicColors) {
+            toLoad.push(actor);
+        }
+        for (const actor of toLoad) {
+            const img = new Image();
+            img.src = `images/${actor}.png`;
+            img.addEventListener('load', () => {
+                console.log(`Loaded ${actor}`);
+                this.sprites[actor] = img; 
+            });
         }
     }
 
@@ -429,22 +449,19 @@ class Actor {
         const ctx = this.stage.ctx;
         const p = this.stage.xform(this.pos);
         ctx.save();
-        ctx.fillStyle = basicColors[this.type];
-        ctx.fillRect(p.x, p.y-this.size.y, this.size.x, this.size.y);
+        if (this.stage.sprites[this.type] && this.type !== 'Water') {
+            ctx.drawImage(this.stage.sprites[this.type], p.x, p.y-this.size.y, this.size.x, this.size.y); 
+        } else if (this.type === 'Water') {
+            this.drawSelfWater();
+        } else {
+            ctx.fillStyle = basicColors[this.type];
+            ctx.fillRect(p.x, p.y-this.size.y, this.size.x, this.size.y);
+        }
         ctx.restore();
         this.drawMini();
         if (this.hp && this.maxhp !== this.hp) {
             this.drawHealth();
         }
-    }
-
-    drawMini() {
-        const ctx = this.stage.miniCtx;
-        const p = this.stage.xformMini(this.pos);
-        ctx.save();
-        ctx.fillStyle = basicColors[this.type];
-        ctx.fillRect(p.x, p.y-this.size.y/this.stage.gridSize, this.size.x/this.stage.gridSize, this.size.y/this.stage.gridSize);
-        ctx.restore();
     }
 
     drawHealth() {
@@ -458,6 +475,35 @@ class Actor {
         ctx.fillStyle = 'red';
         ctx.fillRect(p.x + this.size.x * this.hp/this.maxhp, p.y, this.size.x * (1 - this.hp/this.maxhp), 10);
         ctx.restore();
+    }
+
+    drawMini() {
+        const ctx = this.stage.miniCtx;
+        const p = this.stage.xformMini(this.pos);
+        ctx.save();
+        ctx.fillStyle = basicColors[this.type];
+        ctx.fillRect(p.x, p.y-this.size.y/this.stage.gridSize, this.size.x/this.stage.gridSize, this.size.y/this.stage.gridSize);
+        ctx.restore();
+    }
+
+    drawSelfWater() {
+        const U = new Point(this.pos.x, this.pos.y + this.stage.gridSize);
+        const D = new Point(this.pos.x, this.pos.y - this.stage.gridSize);
+        const L = new Point(this.pos.x - this.stage.gridSize, this.pos.y);
+        const R = new Point(this.pos.x + this.stage.gridSize, this.pos.y);
+        const atU = this.stage.grid[posStr(U, this.stage)];
+        const atD = this.stage.grid[posStr(D, this.stage)];
+        const atL = this.stage.grid[posStr(L, this.stage)];
+        const atR = this.stage.grid[posStr(R, this.stage)];
+        const hasU = atU && atU.type === 'Water' ? 'U' : '';
+        const hasD = atD && atD.type === 'Water' ? 'D' : '';
+        const hasL = atL && atL.type === 'Water' ? 'L' : '';
+        const hasR = atR && atR.type === 'Water' ? 'R' : '';
+        const suffix = hasL + hasR + hasU + hasD;
+        const p = this.stage.xform(this.pos);
+        const ctx = this.stage.ctx;
+        const sprite = this.stage.sprites[`Water${suffix}`] ?? this.stage.sprites['Water']
+        ctx.drawImage(sprite, p.x, p.y-this.size.y, this.stage.gridSize, this.stage.gridSize);
     }
 
     get rpos() {
@@ -521,6 +567,7 @@ class Crate extends Actor {
             // Crates fall into water
             this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
             this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
+            this.stage.grid[posStr(obj.pos, this.stage)] = null;
             return true;
         } else if (obj) {
             this.pos = sav;
@@ -998,7 +1045,9 @@ class Ammo extends Actor {
         const letter = this.type[0];
         p.x += this.size.x/2;
         p.y -= this.size.y/2-8;
-        drawText(ctx, `${letter}:${this.ammo}`, p, 'black', '22px sans-serif');
+        if (!this.stage.sprites[this.type]) {
+            drawText(ctx, `${letter}:${this.ammo}`, p, 'black', '22px sans-serif');
+        }
     }
 }
 
