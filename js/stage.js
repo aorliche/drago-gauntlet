@@ -147,6 +147,8 @@ class Editor {
             if (actor) {
                 if (actor instanceof BigBoyPart) {
                     this.stage.actors.splice(this.stage.actors.indexOf(actor.whole), 1);
+                } else if (actor instanceof Terrain) {
+                    this.stage.grid[posStr(actor.pos, this.stage)] = null;
                 } else {
                     this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
                 }
@@ -183,7 +185,11 @@ class Editor {
                     this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
                 }
             }
-            this.stage.actors.push(this.placing);
+            if (this.placing instanceof Terrain) {
+                this.stage.grid[posStr(this.placing.pos, this.stage)] = this.placing;
+            } else {
+                this.stage.actors.push(this.placing);
+            }
             this.placing = this.placing.clone();
             this.draw();
             console.log('Placed');
@@ -209,7 +215,40 @@ class Stage {
     collides(obj) {
         const splash = [];
         const actors = [];
-        // Split BigBoy into multiple actors
+        // Collide with terrain
+        // Special pos for arrows and fireballs
+        let pos = obj.pos;
+        if (obj instanceof Arrow || obj instanceof Fireball) {
+            pos = this.snapToGrid(obj.pos); 
+        }
+        const act = this.grid[posStr(pos, this)];
+        if (act) {
+            if (obj instanceof Arrow && act.type === 'Water') {
+                return null;
+            }
+            if (obj instanceof Fireball && !obj.exploding && act.type === 'Water') {
+                return null;
+            }
+            if (obj instanceof Fireball && !obj.exploding) {
+                if (act.type !== 'Water') {
+                    return act;
+                }
+            }
+            if (!(obj instanceof Fireball)) {
+                return act;
+            }
+        }
+        // Hack for placing in editor
+        if (obj instanceof BigBoy) {
+            const parts = obj.parts;
+            for (const part of parts) {
+                const act = this.collides(part);
+                if (act) {
+                    return act;
+                }
+            }
+        }
+        // Split BigBoy actors into multiple actors
         for (const actor of this.actors) {
             if (actor instanceof BigBoy) {
                 for (const a of actor.parts) {
@@ -308,6 +347,12 @@ class Stage {
                 this.ctx.stroke();
             }
         }
+        for (const pos in this.grid) {
+            const act = this.grid[pos];
+            if (act) {
+                act.draw();
+            }
+        }
         this.actors.forEach(obj => {
             obj.draw();
         });
@@ -315,15 +360,27 @@ class Stage {
 
     load(json) {
         this.actors = [];
-        this.grid = {};
+        this.grid = json.grid ?? {};
+        for (const pos in this.grid) {
+            if (!this.grid[pos]) {
+                continue;
+            }
+            this.grid[pos] = new Terrain(this.grid[pos]);
+            this.grid[pos].stage = this;
+        }
         for (let actor of json.actors) {
+            let isTerrain = false;
             switch (actor.type) {
+                // For backward compatibility
                 case 'Tree':
                 case 'Rocks':
                 case 'Water':
                 case 'Door':
-                    this.actors.push(new Terrain(actor));
-                    this.grid[posStr(this.actors.at(-1).pos, this)] = this.actors.at(-1);
+                    const a = new Terrain(actor);
+                    a.stage = this;
+                    isTerrain = true;
+                    //this.actors.push(a);
+                    this.grid[posStr(a.pos, this)] = a;
                     break;
                 case 'Crate':
                     this.actors.push(new Crate(actor));
@@ -351,14 +408,17 @@ class Stage {
                     this.actors.push(new Exit(actor));
                     break;
             }
-            this.actors.at(-1).stage = this;
+            if (!isTerrain) {
+                this.actors.at(-1).stage = this;
+            }
         }
     }
 
     loadSprites() {
         this.sprites = {};
+        const arrows = ['ArrowL', 'ArrowR', 'ArrowU', 'ArrowD'];
         const waters = ['Water', 'WaterL', 'WaterR', 'WaterU', 'WaterD', 'WaterLRU', 'WaterRUD', 'WaterLUD', 'WaterLRD', 'WaterLU', 'WaterLR', 'WaterRD', 'WaterLD', 'WaterUD', 'WaterRU'];
-        const toLoad = waters;
+        const toLoad = waters.concat(arrows);
         for (const actor in basicColors) {
             toLoad.push(actor);
         }
@@ -373,12 +433,24 @@ class Stage {
     }
 
     save(name) {
+        // Break loops by nulling stage
         for (let actor of this.actors) {
             actor.stage = null;
         }
-        const json = JSON.stringify({name, actors: this.actors});
+        for (const pos in this.grid) {
+            if (this.grid[pos]) {
+                this.grid[pos].stage = null;
+            }
+        }
+        const json = JSON.stringify({name, actors: this.actors, grid: this.grid});
+        // Restore stage
         for (let actor of this.actors) {
             actor.stage = this;
+        }
+        for (const pos in this.grid) {
+            if (this.grid[pos]) {
+                this.grid[pos].stage = this;
+            }
         }
         return json;
     }
@@ -445,6 +517,7 @@ class Actor {
         this.size = params.size;
     }
 
+    // BigBoy has own drawing method
     draw() {
         const ctx = this.stage.ctx;
         const p = this.stage.xform(this.pos);
@@ -470,7 +543,7 @@ class Actor {
         p.y = p.y + this.size.y;
         p = this.stage.xform(p);
         ctx.save();
-        ctx.fillStyle = 'green';
+        ctx.fillStyle = '#00dd00';
         ctx.fillRect(p.x, p.y, this.size.x, 10);
         ctx.fillStyle = 'red';
         ctx.fillRect(p.x + this.size.x * this.hp/this.maxhp, p.y, this.size.x * (1 - this.hp/this.maxhp), 10);
@@ -566,7 +639,7 @@ class Crate extends Actor {
         if (obj && obj instanceof Terrain && obj.type === 'Water') {
             // Crates fall into water
             this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
-            this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
+            //this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
             this.stage.grid[posStr(obj.pos, this.stage)] = null;
             return true;
         } else if (obj) {
@@ -602,10 +675,10 @@ class Spider extends Actor {
         if (!p) {
             return;
         }
-        if (dist(p.pos, this.pos) > 300) {
+        if (dist(p.rpos, this.rpos) > 300) {
             return;
         }
-        if (dist(p.pos, this.pos) <= this.stage.gridSize) {
+        if (dist(p.rpos, this.rpos) <= 1.5*this.stage.gridSize) {
             this.lastts = ts;
             p.wound(1);
         } else {
@@ -725,6 +798,15 @@ class BigBoy extends Actor {
     }
 
     draw() {
+        if (this.stage.sprites[this.type]) {
+            const ctx = this.stage.ctx;
+            const p = this.stage.xform(this.pos);   
+            ctx.drawImage(this.stage.sprites[this.type], p.x, p.y-64);
+            if (this.hp < this.maxhp) {
+                this.drawHealth();
+            }
+            return;
+        }
         this.parts.forEach(part => part.draw());
         if (this.hp < this.maxhp) {
             this.drawHealth();
@@ -737,7 +819,7 @@ class BigBoy extends Actor {
         p.y = p.y + 2*this.size.y;
         p = this.stage.xform(p);
         ctx.save();
-        ctx.fillStyle = 'green';
+        ctx.fillStyle = '#00dd00';
         ctx.fillRect(p.x, p.y, 2*this.size.x, 10);
         ctx.fillStyle = 'red';
         ctx.fillRect(p.x + 2 * this.size.x * this.hp/this.maxhp, p.y, 2 * this.size.x * (1 - this.hp/this.maxhp), 10);
@@ -762,12 +844,12 @@ class BigBoy extends Actor {
         if (!p) {
             return;
         }
-        if (dist(p.pos, pos) > 300) {
+        if (dist(p.rpos, pos) > 300) {
             return;
         }
-        if (dist(p.pos, pos) <= 2*this.stage.gridSize) {
+        if (dist(p.rpos, pos) <= 2.5*this.stage.gridSize) {
             this.lastts = ts;
-            p.wound(1);
+            p.wound(2);
         } else {
             const dx = p.pos.x - pos.x;
             const dy = p.pos.y - pos.y;
@@ -934,7 +1016,8 @@ class Player extends Actor {
             } else if (obj && obj.type === 'Door' && this.keys) {
                 // Open a door
                 this.keys -= 1;
-                this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
+                this.stage.grid[posStr(obj.pos, this.stage)] = null;
+                //this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
             } else if (obj) {
                 this.pos = sav;
             }
@@ -1137,13 +1220,30 @@ class Arrow extends Actor {
     draw() {
         const ctx = this.stage.ctx;
         const p = this.stage.xform(this.pos);
-        const to = this.stage.xform(new Point(this.pos.x+this.lr*this.stage.gridSize, this.pos.y+this.ud*this.stage.gridSize));
+        if (this.lr === -1) {
+            if (this.stage.sprites.ArrowL) {
+                ctx.drawImage(this.stage.sprites.ArrowL, p.x, p.y+3);
+            }
+        } else if (this.lr === 1) {
+            if (this.stage.sprites.ArrowR) {
+                ctx.drawImage(this.stage.sprites.ArrowR, p.x-20, p.y+3);
+            }
+        } else if (this.ud === -1) {
+            if (this.stage.sprites.ArrowD) {
+                ctx.drawImage(this.stage.sprites.ArrowD, p.x-3, p.y);
+            }
+        } else {
+            if (this.stage.sprites.ArrowU) {
+                ctx.drawImage(this.stage.sprites.ArrowU, p.x-3, p.y-20);
+            }
+        }
+        /*const to = this.stage.xform(new Point(this.pos.x+this.lr*this.stage.gridSize, this.pos.y+this.ud*this.stage.gridSize));
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(to.x, to.y);
         ctx.stroke();
-        ctx.restore();
+        ctx.restore();*/
     }
 
     tick() {
