@@ -775,7 +775,7 @@ class BigBoy extends Actor {
         const ctx = this.stage.ctx;
         const p = this.stage.xform(this.pos);   
         if (this.stage.sprites[this.type]) {
-            ctx.drawImage(this.stage.sprites[this.type], p.x, p.y-this.size);
+            ctx.drawImage(this.stage.sprites[this.type], p.x, p.y-this.size.y);
             if (this.hp < this.maxhp) {
                 this.drawHealth();
             }
@@ -830,7 +830,7 @@ class BigBoy extends Actor {
             if (act != this) {
                 throw `Actor ${act.type} does not exist at ${p}`;   
             }
-            grid[posStr(p, this.stage)] = this;
+            grid[posStr(p, this.stage)] = null;
         });
     }
 
@@ -1255,11 +1255,8 @@ class Arrow extends Actor {
         const obj = this.stage.collidesProjectile(this);
         if (obj) {
             this.remove();
-            if (obj instanceof Spider || obj instanceof Player || obj instanceof Wizard) {
+            if (obj instanceof Spider || obj instanceof Player || obj instanceof Wizard || obj instanceof BigBoy) {
                 obj.wound(1);
-            }
-            if (obj instanceof BigBoy) {
-                obj.whole.wound(1);
             }
         }
     }
