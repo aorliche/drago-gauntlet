@@ -119,7 +119,7 @@ class Editor {
 
     switchPlacing(name) {
         const p = this.placing ? this.placing.pos : new Point(0,0);
-        if (name === 'Tree' || name == 'Rocks' || name == 'Water' || name == 'Door') {
+        if (name === 'Tree' || name == 'Rocks' || name == 'Water' || name == 'Door' || name == 'Exit') {
             this.placing = new Terrain({pos: p, size: new Point(32,32), type: name, stage: this.stage});
         } else if (name === 'Crate') {
             this.placing = new Crate({pos: p, size: new Point(32,32), stage: this.stage});
@@ -128,79 +128,51 @@ class Editor {
         } else if (name === 'Wizard') {
             this.placing = new Wizard({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'BigBoy') {
-            this.placing = new BigBoy({pos: p, size: new Point(32,32), stage: this.stage});
+            this.placing = new BigBoy({pos: p, size: new Point(64,64), stage: this.stage});
         } else if (name === 'Delete') {
             this.placing = new Deleter({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Player') {
             this.placing = new Player({pos: p, size: new Point(32,32), stage: this.stage});
         } else if (name === 'Arrows' || name === 'Fireballs' || name === 'Health' || name == 'Key') {
             this.placing = new Ammo({pos: p, size: new Point(32,32), type: name, stage: this.stage});
-        } else if (name === 'Exit') {
-            this.placing = new Exit({pos: p, size: new Point(32,32), stage: this.stage});
-        }
+        } 
     }
 
     tryPlace() {
         // Delete
+        const act = this.stage.collides(this.placing);
         if (this.placing instanceof Deleter) {
-            const actor = this.stage.collides(this.placing);
-            if (actor) {
-                if (actor instanceof BigBoyPart) {
-                    this.stage.actors.splice(this.stage.actors.indexOf(actor.whole), 1);
-                } else if (actor instanceof Terrain) {
-                    this.stage.grid[posStr(actor.pos, this.stage)] = null;
-                } else {
-                    this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
-                }
+            if (act) {
+                act.remove();
             }
             this.draw();
             return;
-        } else {
-            // Check for collisions
-            if (this.stage.collides(this.placing)) {
-                console.log('Collision!');
-                return;
-            }
-            // Remove existing players
-            if (this.placing instanceof Player) {
-                const toRemove = [];
-                for (let actor of this.stage.actors) {
-                    if (actor instanceof Player) {
-                        toRemove.push(actor);
-                    }
-                }
-                for (let actor of toRemove) {
-                    this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
-                }
-            }
-            // Remove existing exits
-            if (this.placing instanceof Exit) {
-                const toRemove = [];
-                for (let actor of this.stage.actors) {
-                    if (actor instanceof Exit) {
-                        toRemove.push(actor);
-                    }
-                }
-                for (let actor of toRemove) {
-                    this.stage.actors.splice(this.stage.actors.indexOf(actor), 1);
-                }
-            }
-            if (this.placing instanceof Terrain) {
-                this.stage.grid[posStr(this.placing.pos, this.stage)] = this.placing;
-            } else {
-                this.stage.actors.push(this.placing);
-            }
-            this.placing = this.placing.clone();
-            this.draw();
-            console.log('Placed');
         }
+        if (act) {
+            console.log('Collision!');
+            return;
+        }
+        // Remove existing players
+        if (this.placing instanceof Player) {
+            for (const pos in this.stage.actors) {
+                if (this.stage.actors[pos] instanceof Player) {
+                    this.stage.actors[pos].remove();
+                }
+            }
+        }
+        this.placing.clone().place();
+        this.draw();
+        console.log('Placed');
     }
 }
 
 class Stage {
     constructor(canvas, miniMap) {
-        this.actors = [];
-        this.grid = {};
+        this.projectiles = [];
+        // Terrain and loot
+        this.terrain = {};
+        // Player, enemies
+        this.actors = {};
         this.showGrid = false;
         this.pos = new Point(0,0);
         this.canvas = canvas;
@@ -212,106 +184,75 @@ class Stage {
         this.loadSprites();
     }
 
-    collides(obj) {
-        const splash = [];
-        const actors = [];
-        // Collide with terrain
-        // Special pos for arrows and fireballs
-        let pos = obj.pos;
-        if (obj instanceof Arrow || obj instanceof Fireball) {
-            pos = this.snapToGrid(obj.pos); 
-        }
-        const act = this.grid[posStr(pos, this)];
-        if (act) {
-            if (obj instanceof Arrow && act.type === 'Water') {
-                return null;
-            }
-            if (obj instanceof Fireball && !obj.exploding && act.type === 'Water') {
-                return null;
-            }
-            if (obj instanceof Fireball && !obj.exploding) {
-                if (act.type !== 'Water') {
-                    return act;
+    collidesProjectile(proj) {
+        // Exploding fireball
+        if (proj instanceof Fireball && proj.exploding) {
+            const splash = [];
+            for (const pos in this.actors) {
+                const actor = this.actors[pos];
+                if (!actor) {
+                    continue;
+                }
+                if (dist(actor.rpos, proj.pos) < proj.radius) {
+                    splash.push(actor);
                 }
             }
-            if (!(obj instanceof Fireball)) {
-                return act;
-            }
+            return splash;
         }
-        // Hack for placing in editor
+        const pos = this.snapToGrid(proj.pos);
+        let act = this.terrain[posStr(pos, this)];
+        // Projectiles pass through Ammo, Water, and Exits
+        if (act instanceof Terrain && act.type !== 'Water' && act.type !== 'Exit') {
+            return act;
+        }
+        act = this.actors[posStr(pos, this)];
+        // Can't hit yourself
+        if (act === proj.shooter) {
+            return null;
+        }
+        // Projectiles hit all actors
+        return act;
+    }
+
+    collides(obj) {
+        // Hack for BigBoy (originally placing in editor)
         if (obj instanceof BigBoy) {
             const parts = obj.parts;
             for (const part of parts) {
-                const act = this.collides(part);
+                const act = this.collides({pos: part, whole: obj, type: 'BigBoyPart'});
                 if (act) {
                     return act;
                 }
             }
+            return null;
         }
-        // Split BigBoy actors into multiple actors
-        for (const actor of this.actors) {
-            if (actor instanceof BigBoy) {
-                for (const a of actor.parts) {
-                    actors.push(a);
-                }
-            } else {
-                actors.push(actor);
-            }
+        // Terrain and powerups
+        let act = this.terrain[posStr(obj.pos, this)];
+        // Delete can collide with anything
+        if (obj instanceof Deleter) {
+            return act;
         }
-        for (const actor of actors) {
-            if (actor === obj) {
-                continue;
-            }
-            // BigBoy can't collide with themselves
-            if (actor instanceof BigBoyPart && obj instanceof BigBoyPart) {
-                if (actor.whole == obj.whole) {
-                    continue;
-                }
-            }
-            // Delete can collide with everything
-            if (!(obj instanceof Deleter)) {
-                if (actor instanceof Arrow || actor instanceof Fireball) {
-                    continue;
-                }
-                // Stuff arrows or fireballs can't collide with
-                if (obj instanceof Arrow || obj instanceof Fireball) {
-                    if (actor.type === 'Water' || actor instanceof Exit || actor instanceof Ammo) {
-                        continue;
-                    }
-                }
-                // Ammos and exits can be stepped on by non-players
-                if ((actor instanceof Ammo || actor instanceof Exit) && !(obj instanceof Player)) {
-                    continue;
-                }
-            }
-            // Old locked to grid
-            if (actor.pos.x === obj.pos.x && actor.pos.y === obj.pos.y) {
-                return actor;
-            }
-            // Projectiles
-            if (obj instanceof Arrow || (obj instanceof Fireball && !obj.exploding)) {
-                if (actor == obj.shooter) {
-                    continue;
-                }
-                if (obj.pos.x >= actor.pos.x
-                    && obj.pos.x <= actor.pos.x + actor.size.x
-                    && obj.pos.y >= actor.pos.y
-                    && obj.pos.y <= actor.pos.y + actor.size.y) {
-                    return actor;
-                }
-            }
-            // Exploding fireball
-            if (obj instanceof Fireball && obj.exploding) {
-                // Return all actors hit by fireball
-                if (dist(actor.rpos, obj.pos) < obj.radius) {
-                    splash.push(actor);
-                }
+        // Enemies can overlap power up and exits
+        if (obj instanceof Spider || obj instanceof Wizard || obj.type === 'BigBoyPart') {
+            if (act instanceof Terrain && act.type !== 'Exit') {
+                return act;
             }
         }
-        if (obj instanceof Fireball && obj.exploding) {
-            return splash;
+        // Players hit/pick up everything
+        if (act) {
+            return act;
         }
-        return null;
+        // Actors
+        act = this.actors[posStr(obj.pos, this)];
+        // Actors can't collide with themselves
+        if (obj === act) {
+            return null;
+        }
+        // BigBoy can't collide with themselves
+        if (obj.type === 'BigBoyPart' && obj.whole === act) {
+            return null;
+        }
+        return act;
     }
 
     draw() {
@@ -347,69 +288,76 @@ class Stage {
                 this.ctx.stroke();
             }
         }
-        for (const pos in this.grid) {
-            const act = this.grid[pos];
+        for (const pos in this.terrain) {
+            const act = this.terrain[pos];
             if (act) {
                 act.draw();
             }
         }
-        this.actors.forEach(obj => {
-            obj.draw();
-        });
+        for (const pos in this.actors) {
+            const act = this.actors[pos];
+            if (act) {
+                act.draw();
+            }
+        }
+        this.projectiles.forEach(p => p.draw());
     }
 
     load(json) {
-        this.actors = [];
-        this.grid = json.grid ?? {};
-        for (const pos in this.grid) {
-            if (!this.grid[pos]) {
+        this.terrain = json.terrain ?? {};
+        this.actors = json.actors ?? {};
+        for (const pos in this.terrain) {
+            const act = this.terrain[pos];
+            if (!act) {
                 continue;
             }
-            this.grid[pos] = new Terrain(this.grid[pos]);
-            this.grid[pos].stage = this;
-        }
-        for (let actor of json.actors) {
-            let isTerrain = false;
-            switch (actor.type) {
-                // For backward compatibility
+            switch (act.type) {
                 case 'Tree':
                 case 'Rocks':
                 case 'Water':
                 case 'Door':
-                    const a = new Terrain(actor);
-                    a.stage = this;
-                    isTerrain = true;
-                    //this.actors.push(a);
-                    this.grid[posStr(a.pos, this)] = a;
-                    break;
-                case 'Crate':
-                    this.actors.push(new Crate(actor));
-                    break;
-                case 'Spider':
-                    this.actors.push(new Spider(actor));
-                    break;
-                case 'Wizard':
-                    this.actors.push(new Wizard(actor));
-                    break;
-                case 'BigBoy':
-                    this.actors.push(new BigBoy(actor));
-                    break;
-                case 'Player':
-                    this.actors.push(new Player(actor));
-                    this.player = this.actors.at(-1);
+                case 'Exit':
+                    this.terrain[pos] = new Terrain(act);
                     break;
                 case 'Arrows':
                 case 'Fireballs':
                 case 'Health':
                 case 'Key':
-                    this.actors.push(new Ammo(actor));
-                    break;
-                case 'Exit':
-                    this.actors.push(new Exit(actor));
+                    this.terrain[pos] = new Ammo(act);
                     break;
             }
-            if (!isTerrain) {
-                this.actors.at(-1).stage = this;
+            this.terrain[pos].stage = this;
+        }
+        for (const pos in this.actors) {
+            const act = this.actors[pos];
+            if (!act) {
+                continue;
+            }
+            switch (act.type) {
+                case 'Crate':
+                    this.actors[pos] = new Crate(act);
+                    break;
+                case 'Spider':
+                    this.actors[pos] = new Spider(act);
+                    break;
+                case 'Wizard':
+                    this.actors[pos] = new Wizard(act);
+                    break;
+                case 'BigBoy':
+                    const bb = new BigBoy(act);
+                    bb.stage = this;
+                    bb.parts.forEach(part => {
+                        this.actors[posStr(part, this)] = bb; 
+                    });
+                    break;
+                case 'Player':
+                    const p = new Player(act);
+                    this.actors[pos] = p;
+                    this.player = p;
+                    break;
+            }
+            if (act.type != 'BigBoy') {
+                this.actors[pos].stage = this;
             }
         }
     }
@@ -417,7 +365,11 @@ class Stage {
     loadSprites() {
         this.sprites = {};
         const arrows = ['ArrowL', 'ArrowR', 'ArrowU', 'ArrowD'];
-        const waters = ['Water', 'WaterL', 'WaterR', 'WaterU', 'WaterD', 'WaterLRU', 'WaterRUD', 'WaterLUD', 'WaterLRD', 'WaterLU', 'WaterLR', 'WaterRD', 'WaterLD', 'WaterUD', 'WaterRU'];
+        const waters = [
+            'Water', 'WaterLRUD',
+            'WaterL', 'WaterR', 'WaterU', 'WaterD', 
+            'WaterLRU', 'WaterRUD', 'WaterLUD', 'WaterLRD', 
+            'WaterLU', 'WaterLR', 'WaterRD', 'WaterLD', 'WaterUD', 'WaterRU'];
         const toLoad = waters.concat(arrows);
         for (const actor in basicColors) {
             toLoad.push(actor);
@@ -434,22 +386,26 @@ class Stage {
 
     save(name) {
         // Break loops by nulling stage
-        for (let actor of this.actors) {
-            actor.stage = null;
-        }
-        for (const pos in this.grid) {
-            if (this.grid[pos]) {
-                this.grid[pos].stage = null;
+        for (const pos in this.actors) {
+            if (this.actors[pos]) {
+                this.actors[pos].stage = null;
             }
         }
-        const json = JSON.stringify({name, actors: this.actors, grid: this.grid});
-        // Restore stage
-        for (let actor of this.actors) {
-            actor.stage = this;
+        for (const pos in this.terrain) {
+            if (this.terrain[pos]) {
+                this.terrain[pos].stage = null;
+            }
         }
-        for (const pos in this.grid) {
-            if (this.grid[pos]) {
-                this.grid[pos].stage = this;
+        const json = JSON.stringify({name, actors: this.actors, terrain: this.terrain});
+        // Restore stage
+        for (const pos in this.actors) {
+            if (this.actors[pos]) {
+                this.actors[pos].stage = this;
+            }
+        }
+        for (const pos in this.terrain) {
+            if (this.terrain[pos]) {
+                this.terrain[pos].stage = this;
             }
         }
         return json;
@@ -468,13 +424,15 @@ class Stage {
     }
 
     tick(ts) {
-        this.actors.forEach(obj => {
-            if (obj instanceof Arrow) {
-                obj.tick(ts);
-            } else if (obj.tick) {
-                obj.tick(ts);
+        for (const proj of this.projectiles) {
+            proj.tick(ts);
+        }
+        for (const pos in this.actors) {
+            const act = this.actors[pos];
+            if (act && act.tick) {
+                act.tick(ts);
             }
-        });
+        }
     }
 
     xform(p) {
@@ -579,6 +537,24 @@ class Actor {
         ctx.drawImage(sprite, p.x, p.y-this.size.y, this.stage.gridSize, this.stage.gridSize);
     }
 
+    place() {
+        const grid = this instanceof Terrain || this instanceof Ammo ? this.stage.terrain : this.stage.actors;
+        const act = grid[posStr(this.pos, this.stage)];
+        if (act) {
+            throw `Actor ${act.type} already exists at ${this.pos}`;
+        }
+        grid[posStr(this.pos, this.stage)] = this;
+    }
+
+    remove() {
+        const grid = this instanceof Terrain || this instanceof Ammo ? this.stage.terrain : this.stage.actors;
+        const act = grid[posStr(this.pos, this.stage)];
+        if (act != this) {
+            throw `Actor ${this.type} does not exist at ${this.pos}`;
+        }
+        grid[posStr(this.pos, this.stage)] = null;
+    }
+
     get rpos() {
         const x = this.pos.x + this.size.x/2;
         const y = this.pos.y + this.size.y/2;
@@ -595,7 +571,7 @@ class Actor {
         }
         if (this.hp <= 0) {
             if (!(this instanceof Player)) {
-                this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
+                this.remove();
             }
         }
     }
@@ -633,19 +609,20 @@ class Crate extends Actor {
 
     move(lr, ud) {
         const sav = clonePoint(this.pos);
+        this.remove();
         this.pos.x += lr*this.size.x;
         this.pos.y += ud*this.size.y;
         const obj = this.stage.collides(this);
         if (obj && obj instanceof Terrain && obj.type === 'Water') {
             // Crates fall into water
-            this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
-            //this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
-            this.stage.grid[posStr(obj.pos, this.stage)] = null;
+            obj.remove();
             return true;
         } else if (obj) {
             this.pos = sav;
+            this.place();
             return false;
         }
+        this.place();
         return true;
     }
 }
@@ -685,6 +662,7 @@ class Spider extends Actor {
             const dx = p.pos.x - this.pos.x;
             const dy = p.pos.y - this.pos.y;
             const sav = clonePoint(this.pos);
+            this.remove();
             if (Math.abs(dx) > 0) {
                 this.pos.x += Math.sign(dx)*this.stage.gridSize;
             }
@@ -695,6 +673,7 @@ class Spider extends Actor {
             if (obj) {
                 this.pos = sav;
             }
+            this.place();
             this.lastts = ts;
         }
     }
@@ -734,7 +713,7 @@ class Wizard extends Actor {
             const p = clonePoint(this.pos);
             p.x += this.size.x/2;
             p.y += this.size.y/2;
-            this.stage.actors.push(new Arrow({
+            this.stage.projectiles.push(new Arrow({
                 pos: p,
                 stage: this.stage,
                 lr: 0,
@@ -745,7 +724,7 @@ class Wizard extends Actor {
             const p = clonePoint(this.pos);
             p.x += this.size.x/2;
             p.y += this.size.y/2;
-            this.stage.actors.push(new Arrow({
+            this.stage.projectiles.push(new Arrow({
                 pos: p,
                 stage: this.stage,
                 lr: Math.sign(dx),
@@ -754,29 +733,24 @@ class Wizard extends Actor {
             }));
         } else if (Math.abs(dx) < Math.abs(dy)) {
             const sav = clonePoint(this.pos);
+            this.remove();
             this.pos.x += Math.sign(dx)*this.stage.gridSize;
             const obj = this.stage.collides(this);
             if (obj) {
                 this.pos = sav;
             }
+            this.place();
         } else if (Math.abs(dy) <= Math.abs(dx)) {
             const sav = clonePoint(this.pos);
+            this.remove();
             this.pos.y += Math.sign(dy)*this.stage.gridSize;
             const obj = this.stage.collides(this);
             if (obj) {
                 this.pos = sav;
             }
+            this.place();
         }
         this.lastts = ts;
-    }
-}
-
-class BigBoyPart extends Actor {
-    constructor(params) {
-        super(params);
-        this.whole = params.whole;
-        this.stage = params.whole.stage;
-        this.type = 'BigBoy';
     }
 }
 
@@ -798,16 +772,19 @@ class BigBoy extends Actor {
     }
 
     draw() {
+        const ctx = this.stage.ctx;
+        const p = this.stage.xform(this.pos);   
         if (this.stage.sprites[this.type]) {
-            const ctx = this.stage.ctx;
-            const p = this.stage.xform(this.pos);   
-            ctx.drawImage(this.stage.sprites[this.type], p.x, p.y-64);
+            ctx.drawImage(this.stage.sprites[this.type], p.x, p.y-this.size);
             if (this.hp < this.maxhp) {
                 this.drawHealth();
             }
-            return;
+        } else {
+            ctx.save();
+            ctx.fillStyle = basicColors[this.type];
+            ctx.fillRect(p.x, p.y-this.size, this.size.x, this.size.y);
+            ctx.restore();
         }
-        this.parts.forEach(part => part.draw());
         if (this.hp < this.maxhp) {
             this.drawHealth();
         }
@@ -816,28 +793,52 @@ class BigBoy extends Actor {
     drawHealth() {
         const ctx = this.stage.ctx;
         let p = clonePoint(this.pos);
-        p.y = p.y + 2*this.size.y;
+        p.y = p.y + this.size.y;
         p = this.stage.xform(p);
         ctx.save();
         ctx.fillStyle = '#00dd00';
-        ctx.fillRect(p.x, p.y, 2*this.size.x, 10);
+        ctx.fillRect(p.x, p.y, this.size.x, 10);
         ctx.fillStyle = 'red';
-        ctx.fillRect(p.x + 2 * this.size.x * this.hp/this.maxhp, p.y, 2 * this.size.x * (1 - this.hp/this.maxhp), 10);
+        ctx.fillRect(p.x + this.size.x * this.hp/this.maxhp, p.y, this.size.x * (1 - this.hp/this.maxhp), 10);
         ctx.restore();
     }
 
     get parts() {
         return [
-            new BigBoyPart({pos: new Point(this.pos.x, this.pos.y), size: this.size, whole: this}),
-            new BigBoyPart({pos: new Point(this.pos.x+this.size.x, this.pos.y), size: this.size, whole: this}),
-            new BigBoyPart({pos: new Point(this.pos.x+this.size.x, this.pos.y+this.size.y), size: this.size, whole: this}),
-            new BigBoyPart({pos: new Point(this.pos.x, this.pos.y+this.size.y), size: this.size, whole: this}),
+            new Point(this.pos.x, this.pos.y), 
+            new Point(this.pos.x + this.stage.gridSize, this.pos.y), 
+            new Point(this.pos.x + this.stage.gridSize, this.pos.y + this.stage.gridSize), 
+            new Point(this.pos.x, this.pos.y + this.stage.gridSize), 
         ];
+    }
+    
+    place() {
+        const grid = this.stage.actors;
+        this.parts.forEach(p => {
+            const act = grid[posStr(p, this.stage)];
+            if (act) {
+                throw `Actor ${act.type} already exists at ${p}`;
+            }
+            grid[posStr(p, this.stage)] = this;
+        });
+    }
+
+    remove() {
+        const grid = this.stage.actors;
+        this.parts.forEach(p => {
+            const act = grid[posStr(p, this.stage)];
+            if (act != this) {
+                throw `Actor ${act.type} does not exist at ${p}`;   
+            }
+            grid[posStr(p, this.stage)] = this;
+        });
     }
 
     tick(ts) {
         const p = this.stage.player;
-        const pos = new Point(this.pos.x+this.size.x, this.pos.y+this.size.y);
+        const pos = new Point(
+            this.pos.x+this.stage.gridSize, 
+            this.pos.y+this.stage.gridSize);
         if (ts - this.lastts < 20) {
             return;
         }
@@ -854,19 +855,18 @@ class BigBoy extends Actor {
             const dx = p.pos.x - pos.x;
             const dy = p.pos.y - pos.y;
             const sav = clonePoint(this.pos);
+            this.remove();
             if (Math.abs(dx) > 0) {
                 this.pos.x += Math.sign(dx)*this.stage.gridSize;
             }
             if (Math.abs(dy) > 0) {
                 this.pos.y += Math.sign(dy)*this.stage.gridSize;
             }
-            for (const part of this.parts) {
-                const obj = this.stage.collides(part);
-                if (obj) {
-                    this.pos = sav;
-                    break;
-                }
-            }
+            const obj = this.stage.collides(this);
+            if (obj) {
+                this.pos = sav;
+            } 
+            this.place();
             this.lastts = ts;
         }
     }
@@ -909,7 +909,7 @@ class Player extends Actor {
         const p = clonePoint(this.pos);
         p.x += this.size.x/2;
         p.y += this.size.y/2;
-        this.stage.actors.push(new Fireball({
+        this.stage.projectiles.push(new Fireball({
             pos: p,
             stage: this.stage,
             lr: this.lastlr,
@@ -941,6 +941,7 @@ class Player extends Actor {
 
     move() {
         const sav = clonePoint(this.pos);
+        this.remove();
         let moved = false;
         if (this.lr === -1) {
             moved = true;
@@ -1007,8 +1008,8 @@ class Player extends Actor {
                         break;
                     }
                 }
-                this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
-            } else if (obj && obj instanceof Exit) {
+                obj.remove();
+            } else if (obj && obj.type === 'Exit') {
                 // Reach an exit
                 if (this.stage.nextLevelCb) {
                     this.stage.nextLevelCb();
@@ -1016,14 +1017,15 @@ class Player extends Actor {
             } else if (obj && obj.type === 'Door' && this.keys) {
                 // Open a door
                 this.keys -= 1;
-                this.stage.grid[posStr(obj.pos, this.stage)] = null;
-                //this.stage.actors.splice(this.stage.actors.indexOf(obj), 1);
+                obj.remove();  
             } else if (obj) {
                 this.pos = sav;
             }
             this.stage.pos = clonePoint(this.pos);
+            this.place();
             return true;
         }
+        this.place();
         return false;
     }
 
@@ -1046,7 +1048,7 @@ class Player extends Actor {
         const p = clonePoint(this.pos);
         p.x += this.size.x/2;
         p.y += this.size.y/2;
-        this.stage.actors.push(new Arrow({
+        this.stage.projectiles.push(new Arrow({
             pos: p,
             stage: this.stage,
             lr: this.lastlr,
@@ -1165,23 +1167,27 @@ class Fireball extends Actor {
         ctx.stroke();
         ctx.restore();
     }
+
+    remove() {
+        this.stage.projectiles.splice(this.stage.projectiles.indexOf(this), 1);
+    }
     
     tick() {
         if (this.exploding) {
             this.radius += 20;
             if (this.radius > 100) {
-                this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
+                this.remove();
             }
-            const splash = this.stage.collides(this);
+            const splash = this.stage.collidesProjectile(this);
             for (let a of splash) {
-                if (a instanceof BigBoyPart) {
+                if (a.type === 'BigBoyPart') {
                     a = a.whole;
                 }
                 if (this.hurt.includes(a)) {
                     continue;
                 }
                 if (a instanceof Crate) {
-                    this.stage.actors.splice(this.stage.actors.indexOf(a), 1);
+                    a.remove();
                 }
                 if (a instanceof Spider || a instanceof Wizard || a instanceof BigBoy || a instanceof Player) {
                     a.wound(2);
@@ -1192,7 +1198,7 @@ class Fireball extends Actor {
         }
         this.pos.x += 0.3*this.lr*this.stage.gridSize;
         this.pos.y += 0.3*this.ud*this.stage.gridSize;
-        const obj = this.stage.collides(this);
+        const obj = this.stage.collidesProjectile(this);
         if (obj) {
             this.exploding = true;
         }
@@ -1237,25 +1243,22 @@ class Arrow extends Actor {
                 ctx.drawImage(this.stage.sprites.ArrowU, p.x-3, p.y-20);
             }
         }
-        /*const to = this.stage.xform(new Point(this.pos.x+this.lr*this.stage.gridSize, this.pos.y+this.ud*this.stage.gridSize));
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(to.x, to.y);
-        ctx.stroke();
-        ctx.restore();*/
+    }
+
+    remove() {
+        this.stage.projectiles.splice(this.stage.projectiles.indexOf(this), 1);
     }
 
     tick() {
         this.pos.x += 0.3*this.lr*this.stage.gridSize;
         this.pos.y += 0.3*this.ud*this.stage.gridSize;
-        const obj = this.stage.collides(this);
+        const obj = this.stage.collidesProjectile(this);
         if (obj) {
-            this.stage.actors.splice(this.stage.actors.indexOf(this), 1);
+            this.remove();
             if (obj instanceof Spider || obj instanceof Player || obj instanceof Wizard) {
                 obj.wound(1);
             }
-            if (obj instanceof BigBoyPart) {
+            if (obj instanceof BigBoy) {
                 obj.whole.wound(1);
             }
         }
@@ -1269,7 +1272,7 @@ class Deleter extends Actor {
     }
 }
 
-class Exit extends Actor {
+/*class Exit extends Actor {
     constructor(params) {
         super(params);
         this.type = 'Exit';
@@ -1282,4 +1285,4 @@ class Exit extends Actor {
             stage: this.stage,
         });
     }
-}
+}*/

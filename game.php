@@ -3,7 +3,7 @@ $files = scandir("levels");
 $files = array_diff($files, array('.', '..'));
 $levels = array();
 foreach ($files as $file) {
-    if (preg_match('/^L\\d+\\.json$/', $file)) {
+    if (preg_match('/^M\\d+\\.json$/', $file)) {
         array_push($levels, $file);
     }
 }
