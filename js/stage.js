@@ -522,10 +522,10 @@ class Actor {
         const D = new Point(this.pos.x, this.pos.y - this.stage.gridSize);
         const L = new Point(this.pos.x - this.stage.gridSize, this.pos.y);
         const R = new Point(this.pos.x + this.stage.gridSize, this.pos.y);
-        const atU = this.stage.grid[posStr(U, this.stage)];
-        const atD = this.stage.grid[posStr(D, this.stage)];
-        const atL = this.stage.grid[posStr(L, this.stage)];
-        const atR = this.stage.grid[posStr(R, this.stage)];
+        const atU = this.stage.terrain[posStr(U, this.stage)];
+        const atD = this.stage.terrain[posStr(D, this.stage)];
+        const atL = this.stage.terrain[posStr(L, this.stage)];
+        const atR = this.stage.terrain[posStr(R, this.stage)];
         const hasU = atU && atU.type === 'Water' ? 'U' : '';
         const hasD = atD && atD.type === 'Water' ? 'D' : '';
         const hasL = atL && atL.type === 'Water' ? 'L' : '';
