@@ -237,9 +237,8 @@ class Stage {
             if (act instanceof Terrain && act.type !== 'Exit') {
                 return act;
             }
-        }
+        } else if (act) {
         // Players hit/pick up everything
-        if (act) {
             return act;
         }
         // Actors
@@ -301,6 +300,49 @@ class Stage {
             }
         }
         this.projectiles.forEach(p => p.draw());
+    }
+
+    loadProc(cols) {
+        this.terrain = {};
+        this.actors = {};
+        for (let i=0; i<cols.length; i++) {
+            for (let j=0; j<cols[0].length; j++) {
+                const p = new Point(i*this.gridSize, j*this.gridSize);
+                const s = posStr(p, this);
+                let act = null;
+                switch (cols[i][j]) {
+                    case 'A':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Wizard'};
+                        this.actors[s] = new Wizard(act);
+                        break;
+                    case 'C':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Crate'};
+                        this.actors[s] = new Crate(act);
+                        break;
+                    case 'R': 
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Rocks'};
+                        this.terrain[s] = new Terrain(act);
+                        break;
+                    case 'S':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Spider'};
+                        this.actors[s] = new Spider(act);
+                        break;
+                    case 'T':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Tree'};
+                        this.terrain[s] = new Terrain(act);
+                        break;
+                    case 'W':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Water'};
+                        this.terrain[s] = new Terrain(act);
+                        break;
+                }
+            }
+        }
+        const pos = new Point(2*this.gridSize, 2*this.gridSize);
+        const act = {stage: this, pos: pos, size: new Point(this.gridSize, this.gridSize)};
+        const p = new Player(act);
+        this.actors[posStr(pos, this)] = p;
+        this.player = p;
     }
 
     load(json) {
@@ -376,7 +418,13 @@ class Stage {
         }
         for (const actor of toLoad) {
             const img = new Image();
-            img.src = `images/${actor}.png`;
+            if (actor == 'BigBoy') {
+                img.src = 'images/Ferris.png';
+            } else if (actor == 'Player') {
+                img.src = 'images/Gopher.png';
+            } else {
+                img.src = `images/${actor}.png`;
+            }
             img.addEventListener('load', () => {
                 console.log(`Loaded ${actor}`);
                 this.sprites[actor] = img; 
@@ -550,6 +598,7 @@ class Actor {
         const grid = this instanceof Terrain || this instanceof Ammo ? this.stage.terrain : this.stage.actors;
         const act = grid[posStr(this.pos, this.stage)];
         if (act != this) {
+            console.trace();
             throw `Actor ${this.type} does not exist at ${this.pos}`;
         }
         grid[posStr(this.pos, this.stage)] = null;

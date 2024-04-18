@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Maze Test</title>
+    <script src='js/proc.js'></script>
+    <script>
+        function printArr(arr) {
+        let str = "";
+          for (let item of arr) {
+            if (Array.isArray(item)) str += printArr(item) + '\n';
+            else str += item + ", ";
+          }
+          return str;
+        }
+        window.addEventListener('load', e => {
+            const res = backtrack(25,25);
+            document.querySelector('#pre').innerText = printArr(res);
+        });
+    </script>
+</head>
+<body>
+    <pre id='pre'>
+    </pre>
+</body>
+</html>
