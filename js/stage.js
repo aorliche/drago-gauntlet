@@ -315,9 +315,36 @@ class Stage {
                         act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Wizard'};
                         this.actors[s] = new Wizard(act);
                         break;
+                    case 'B':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(2*this.gridSize, 2*this.gridSize), type: 'BigBoy'};
+                        act = new BigBoy(act);
+                        act.parts.forEach(part => {
+                            this.actors[posStr(part, this)] = act; 
+                        });
+                        break;
                     case 'C':
                         act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Crate'};
                         this.actors[s] = new Crate(act);
+                        break;
+                    case 'D':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Door'};
+                        this.terrain[s] = new Terrain(act);
+                        break;
+                    case 'F':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Fireballs'};
+                        this.terrain[s] = new Ammo(act);
+                        break;
+                    case 'H':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Health'};
+                        this.terrain[s] = new Ammo(act);
+                        break;
+                    case 'K':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Key'};
+                        this.terrain[s] = new Ammo(act);
+                        break;
+                    case 'O':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Arrows'};
+                        this.terrain[s] = new Ammo(act);
                         break;
                     case 'R': 
                         act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Rocks'};

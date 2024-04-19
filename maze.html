@@ -2,8 +2,10 @@
 <html>
 <head>
     <title>Maze Test</title>
-    <script src='js/proc.js'></script>
-    <script>
+    <script src='js/proc.js' type='module'></script>
+    <script type='module'>
+        import {addActors, addCells, addRooms, addTrees, addWater, backtrack, makeEmpty} from './js/proc.js';
+
         function printArr(arr) {
         let str = "";
           for (let item of arr) {
@@ -13,8 +15,11 @@
           return str;
         }
         window.addEventListener('load', e => {
-            const res = backtrack(25,25);
-            document.querySelector('#pre').innerText = printArr(res);
+            //let data = backtrack(25,25);
+            //data = addWater(data, 0.08, 10, 5);
+            let data = makeEmpty(25, 25);
+            data = addCells(data, 5);
+            document.querySelector('#pre').innerText = printArr(data);
         });
     </script>
 </head>

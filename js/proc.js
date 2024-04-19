@@ -1,4 +1,142 @@
-export {addActors, addRooms, addTrees, addWater, backtrack};
+export {addActors, addCells, addRooms, addTrees, addWater, backtrack, makeEmpty};
+
+function makeEmpty(w, h) {
+    const cols = [];
+    for (let i=0; i<w; i++) {
+        const col = [];
+        for (let j=0; j<h; j++) {
+            if (i == 0 || j == 0 || i == w-1 || j == h-1) {
+                col.push('R');
+            } else {
+                col.push(' ');
+            }
+        }
+        cols.push(col);
+    }
+    return cols;
+}
+
+// num cells with key in each cell
+// key should be reachable from any point in its cell
+function addCells(cols, num) {
+    function cycle(edges, a, b, visited) {
+        if (!visited) visited = [a];
+        for (let i=0; i<edges.length; i++) {
+            if (edges[i][0] == a && edges[i][1] == b) {
+                return true;
+            } else if (edges[i][0] == b && edges[i][1] == a) {
+                return true;
+            } 
+            const n0 = edges[i][1] == a && visited.indexOf(edges[i][0]) == -1;
+            const n1 = edges[i][0] == a && visited.indexOf(edges[i][1]) == -1;
+            if (n0) {
+                const nv = [...visited, edges[i][0]];
+                if (cycle(edges, edges[i][0], b, nv)) {
+                    return true;
+                }
+            }
+            if (n1) {
+                const nv = [...visited, edges[i][1]];
+                if (cycle(edges, edges[i][1], b, nv)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    const nx = cols.length;
+    const ny = cols[0].length;
+    const sz = nx*ny;
+    const visited = {};
+    const frontiers = [];
+    const origins = [];
+    const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+    const walls = [];
+    const edges = [];
+    outer:
+    for (let i=0; i<num; i++) {
+        const x = Math.floor(Math.random()*nx);
+        const y = Math.floor(Math.random()*ny);
+        if (cols[x][y] != ' ' || x == 0 || y == 0 || x == nx-1 || y == ny-1) {
+            i--;
+            continue;
+        }
+        // No nearby starts
+        for (let i=0; i<frontiers.length; i++) {
+            const pt = frontiers[i][0];
+            if (Math.abs(x-pt[0]) <= 5 && Math.abs(y-pt[1]) <= 5) {
+                i--;
+                continue outer;
+            }
+        }
+        // Place key
+        cols[x][y] = 'K';
+        console.log('key', x, y);
+        frontiers.push([[x,y]]);
+    }
+    let done = false;
+    while (!done) {
+        done = true;
+        for (let i=0; i<frontiers.length; i++) {
+            const ft = frontiers[i];
+            const nft = [];
+            while (ft.length > 0) {
+                done = false;
+                const pt = ft.pop();
+                const vis = visited[pt[0]+','+pt[1]];
+                if (vis && vis != i+1) {
+                    if (!cycle(edges, i+1, vis)) {
+                        edges.push([i+1, vis]);
+                        cols[pt[0]][pt[1]] = 'D';
+                        console.log('door', pt[0], pt[1]);
+                    } else {
+                        walls.push(pt);
+                    }
+                    continue;
+                } else if (vis) {
+                    continue;
+                }
+                visited[pt[0]+','+pt[1]] = i+1;
+                for (const dir of dirs) {
+                    const next = [pt[0]+dir[0], pt[1]+dir[1]];
+                    const oth = visited[next[0]+','+next[1]];
+                    // Hit edge - place wall and don't expand frontier in this direction
+                    if (next[0] == 0 || next[0] == nx-1 || next[1] == 0 || next[1] == ny-1) {
+                        walls.push(next);
+                    } else if (!oth) {
+                        nft.push(next);
+                    }
+                }
+            }
+            frontiers[i] = nft;
+        }
+    }
+    // Place walls
+    for (const wall of walls) {
+        if (cols[wall[0]][wall[1]] == ' ') {
+            cols[wall[0]][wall[1]] = 'R';
+        }
+    }
+    // Fill in diagonal walls
+    const dirs2 = [[1,1],[1,-1],[-1,1],[-1,-1]];
+    for (let i=0; i<nx; i++) {
+        for (let j=0; j<ny; j++) {
+            if (cols[i][j] == ' ') {
+                const v1 = visited[i+','+j];
+                for (const dir of dirs2) {
+                    const p2 = [i+dir[0], j+dir[1]];
+                    if (cols[p2[0]][p2[1]] == ' ') {
+                        const v2 = visited[p2[0]+','+p2[1]];
+                        if (v1 != v2) {
+                            cols[p2[0]][p2[1]] = 'R';
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return cols;
+}
 
 // Add rooms
 // fct: fraction of cells to clear
@@ -135,6 +273,16 @@ function addActors(cols, type, fct) {
             continue;
         }
         if (x <= 7 || y <= 7) {
+            continue;
+        }
+        // BigBoy takes up 2x2 spaces
+        if (type == 'B') {
+            if (cols[x][y] == ' ' && cols[x+1][y] == ' ' && cols[x][y+1] == ' ' && cols[x+1][y+1] == ' ') {
+                cols[x][y] = type;
+                cols[x+1][y] = 'b';
+                cols[x][y+1] = 'b';
+                cols[x+1][y+1] = 'b';
+            }
             continue;
         }
         if (cols[x][y] == ' ') {
