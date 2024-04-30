@@ -107,6 +107,7 @@ class Game {
                 }
                 // Hack for window losing focus
                 // And scheduling a billion frames back to back
+				// Also for requestAnimationFrame being too slow
                 if (ts > prev + 5*dt) {
                     prev = ts;
                 } else {
