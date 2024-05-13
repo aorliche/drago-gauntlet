@@ -1,18 +1,6 @@
-import {dist, shuffle} from './util.js';
+import {dist, make2dArray, shuffle} from './util.js';
 
 export {makeRooms};
-
-function make2dArray(cols, rows, value) {
-	const arr = [];
-	for (let i=0; i<cols; i++) {
-		const sub = [];
-		for (let j=0; j<rows; j++) {
-			sub.push(value);
-		}
-		arr.push(sub);
-	}
-	return arr;
-}
 
 function makeRooms(params) {
 	const size = params.size;

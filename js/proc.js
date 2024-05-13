@@ -1,4 +1,6 @@
-export {addActors, addCells, addRooms, addTrees, addWater, backtrack, makeEmpty};
+export {addActors, addCells, addPlayerAndExit, addRooms, addTrees, addWater, backtrack, makeEmpty};
+
+import {dist, make2dArray, shuffle} from './util.js';
 
 function makeEmpty(w, h) {
     const cols = [];
@@ -136,6 +138,65 @@ function addCells(cols, num) {
         }
     }
     return cols;
+}
+
+function pathExists(cols, p1, p2) {
+	const frontier = [p1];
+	const m = cols.length;
+	const n = cols[0].length;
+	const visited = make2dArray(m, n, false);
+	visited[p1[0]][p1[1]] = true;
+	const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+	while (frontier.length > 0) {
+		const p = frontier.pop();
+		for (let i=0; i<dirs.length; i++) {
+			const x = p[0]+dirs[i][0];
+			const y = p[1]+dirs[i][1];
+			if (x < 0 || x >= m || y < 0 || y >= n || cols[x][y] != ' ' || visited[x][y]) {
+				continue;
+			}
+			visited[x][y] = true;
+			frontier.push([x,y]);
+			if (x == p2[0] && y == p2[1]) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+function addPlayerAndExit(cols) {
+	const empty = [];
+	const m = cols.length;
+	const n = cols[0].length;
+	for (let i=0; i<m; i++) {
+		for (let j=0; j<n; j++) {
+			if (cols[i][j] == ' ') {
+				empty.push([i,j]);
+			}
+		}
+	}
+	shuffle(empty);
+	for (let i=0; i<empty.length-1; i++) {
+		const p1 = {x: empty[i][0], y: empty[i][1]};
+		const p2 = {x: empty[i+1][0], y: empty[i+1][1]};
+		// Long-ish paths only
+		if (dist(p1, p2) < 20) {
+			continue;
+		}
+		if (pathExists(cols, empty[i], empty[i+1])) {
+			cols[p1.x][p1.y] = 'P';
+			cols[p2.x][p2.y] = 'E';
+			return cols;
+		}
+	}
+	// Fail safe
+	const x = empty[0][0];
+	const y = empty[0][1];
+	const xe = x == m-1 ? x-1 : x+1;
+	cols[x][y] = 'P';
+	cols[xe][y] = 'E';
+	return cols;
 }
 
 // Add rooms

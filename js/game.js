@@ -1,7 +1,7 @@
 
 import {$, $$, drawText} from './util.js';
 import {clonePoint, Point, Stage} from './stage.js';
-import {addActors, addCells, addTrees, addWater} from './proc.js';
+import {addActors, addCells, addPlayerAndExit, addTrees, addWater} from './proc.js';
 import {makeRooms} from './rooms.js';
 
 class Game {
@@ -116,7 +116,7 @@ class Game {
                 }
             }
             self.ts++;
-            self.stage.tick(self.ts);
+			self.stage.tick(self.ts);
             self.draw();
             window.requestAnimationFrame(fn);
         }
@@ -128,43 +128,64 @@ window.addEventListener('load', () => {
     const canvas = $('#game-canvas');
     const miniMap = $('#game-minimap');
     const levels = $$('#levels option').map(opt => opt.value);
-    const stage = new Stage(canvas, miniMap);
+    let stage = new Stage(canvas, miniMap);
     const game = new Game({stage, levels});
+	const PLAY_PROC = true;
 
     function nextLevel(first) {
         if (!first) {
             game.levelIdx++;
         }
+		// Play procedurally generated game
+		if (PLAY_PROC) {
+			const idx = game.levelIdx;
+			const levelSize = 20+idx*10;
+			let data = makeRooms({size: [levelSize, levelSize], roomSize: [12, 10], roomSizeSigma: [3, 3], nearLimit: 6});
+            data = addWater(data, 0.08, 10, 5);
+            data = addTrees(data, 0.5);
+            data = addActors(data, 'C', 0.03);
+			data = addPlayerAndExit(data);
+            data = addActors(data, 'S', 0.02+idx*0.005);
+            data = addActors(data, 'A', 0.02+idx*0.005);
+            data = addActors(data, 'B', 0.005+idx*0.005);
+            data = addActors(data, 'O', 0.015+idx*0.005);
+            data = addActors(data, 'F', 0.01+idx*0.005);
+            data = addActors(data, 'H', 0.01);
+			if (first) {
+				stage.loadProc(data);
+				game.loop();
+            } else {
+                // Copy player health and items
+                const st = stage.player.state;
+				// Make a whole new stage because of ridiculous player duplication
+				// and possibly actor duplication bug
+				// Maybe due to requestAnimationFrame ticks, never figured it out
+				const nstage = new Stage(canvas, miniMap);
+				nstage.sprites = stage.sprites;
+				stage = nstage;
+				game.stage = stage;
+				game.stage.nextLevelCb = nextLevel;
+                stage.loadProc(data);
+                stage.player.state = st;
+            }
+            stage.pos = clonePoint(stage.player.pos);
+			return;
+		}
+		// Play hand-crafted levels
         if (game.levelIdx >= game.levels.length) {
             game.levelIdx = 0;
         }
         fetch(`levels/${game.levels[game.levelIdx]}`)
         .then(res => res.json())
         .then(data => {
-			data = makeRooms({size: [125, 125], roomSize: [12, 10], roomSizeSigma: [3, 3], nearLimit: 6});
-            //data = makeEmpty(125, 125); 
-            //data = backtrack(125, 125);
-            //data = addRooms(data, 0.2, 20, 20);
-            //data = addCells(data, 100);
-            data = addWater(data, 0.08, 10, 5);
-            data = addTrees(data, 0.5);
-            data = addActors(data, 'C', 0.02);
-            data = addActors(data, 'S', 0.02);
-            data = addActors(data, 'A', 0.02);
-            data = addActors(data, 'B', 0.02);
-            data = addActors(data, 'O', 0.015);
-            data = addActors(data, 'F', 0.01);
-            data = addActors(data, 'H', 0.01);
             if (first) {
                 // Start loop
-                //stage.load(data);
-                stage.loadProc(data);
+                stage.load(data);
                 game.loop();
             } else {
                 // Copy player health and items
                 const st = stage.player.state;
-                //stage.load(data);
-                stage.loadProc(data);
+                stage.load(data);
                 stage.player.state = st;
             }
             stage.pos = clonePoint(stage.player.pos);
@@ -172,7 +193,7 @@ window.addEventListener('load', () => {
     }
 
     game.stage.nextLevelCb = nextLevel;
-    nextLevel(true);
+	game.stage.loadSprites(() => nextLevel(true));
 
     document.addEventListener('keydown', (e) => {
         game.keydown(e);

@@ -1,5 +1,5 @@
 
-export {$, $$, dist, drawText, shuffle};
+export {$, $$, dist, drawText, make2dArray, shuffle};
 
 const $ = q => document.querySelector(q);
 const $$ = q => [...document.querySelectorAll(q)];
@@ -26,6 +26,18 @@ function drawText(ctx, text, p, color, font, stroke) {
 	}
 	ctx.restore();
 	return tm;
+}
+
+function make2dArray(cols, rows, value) {
+	const arr = [];
+	for (let i=0; i<cols; i++) {
+		const sub = [];
+		for (let j=0; j<rows; j++) {
+			sub.push(value);
+		}
+		arr.push(sub);
+	}
+	return arr;
 }
 
 function shuffle(arr) {

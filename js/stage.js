@@ -181,7 +181,8 @@ class Stage {
         this.miniMap = miniMap;
         this.miniCtx = miniMap.getContext('2d');
         this.player = null;
-        this.loadSprites();
+		// Load sprites must be called after constructor for convenience
+        //this.loadSprites(loadCb);
     }
 
     collidesProjectile(proj) {
@@ -330,6 +331,10 @@ class Stage {
                         act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Door'};
                         this.terrain[s] = new Terrain(act);
                         break;
+					case 'E':
+                        act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Exit'};
+                        this.terrain[s] = new Terrain(act);
+                        break;
                     case 'F':
                         act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Fireballs'};
                         this.terrain[s] = new Ammo(act);
@@ -346,6 +351,12 @@ class Stage {
                         act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Arrows'};
                         this.terrain[s] = new Ammo(act);
                         break;
+					case 'P':
+						act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize)};
+						const play = new Player(act);
+						this.actors[s] = play;
+						this.player = play;
+						break;
                     case 'R': 
                         act = {stage: this, pos: clonePoint(p), size: new Point(this.gridSize, this.gridSize), type: 'Rocks'};
                         this.terrain[s] = new Terrain(act);
@@ -365,11 +376,7 @@ class Stage {
                 }
             }
         }
-        const pos = new Point(2*this.gridSize, 2*this.gridSize);
-        const act = {stage: this, pos: pos, size: new Point(this.gridSize, this.gridSize)};
-        const p = new Player(act);
-        this.actors[posStr(pos, this)] = p;
-        this.player = p;
+		console.log(this.actors);
     }
 
     load(json) {
@@ -431,7 +438,8 @@ class Stage {
         }
     }
 
-    loadSprites() {
+    loadSprites(cb) {
+		let nToLoad = 0;
         this.sprites = {};
         const arrows = ['ArrowL', 'ArrowR', 'ArrowU', 'ArrowD'];
         const waters = [
@@ -444,6 +452,9 @@ class Stage {
             toLoad.push(actor);
         }
         for (const actor of toLoad) {
+			if (actor != 'Delete') {
+				nToLoad++;
+			}
             const img = new Image();
             if (actor == 'BigBoy') {
                 img.src = 'images/Ferris.png';
@@ -455,6 +466,10 @@ class Stage {
             img.addEventListener('load', () => {
                 console.log(`Loaded ${actor}`);
                 this.sprites[actor] = img; 
+				nToLoad--;
+				if (nToLoad == 0) {
+					cb();
+				}
             });
         }
     }
