@@ -3,6 +3,8 @@ import {$, $$, drawText} from './util.js';
 import {clonePoint, Point, Stage} from './stage.js';
 import {addActors, addCells, addPlayerAndExit, addTrees, addWater} from './proc.js';
 import {makeRooms} from './rooms.js';
+	
+const PLAY_PROC = true;
 
 class Game {
     constructor(params) {
@@ -16,20 +18,39 @@ class Game {
         this.stage.draw();
         if (this.stage.player) {
             const ctx = this.stage.ctx;
-            const pHealth = new Point(this.stage.canvas.width-120, 20);
-            const pArrows = new Point(this.stage.canvas.width-120, 40);
-            const pBalls = new Point(this.stage.canvas.width-120, 60);
-            const pKeys = new Point(this.stage.canvas.width-120, 80);
-            const pLevel = new Point(this.stage.canvas.width/2, 20);
-            pHealth.ljust = true;
+			const sprites = this.stage.sprites;
+			// Draw level
+			ctx.save();
+			ctx.globalAlpha = 0.8;
+			ctx.fillStyle = '#aaf';
+			ctx.fillRect(0, 5, this.stage.canvas.width, 40);
+			ctx.strokeRect(0, 5, this.stage.canvas.width, 40);
+			ctx.restore();
+			if (PLAY_PROC) {
+				drawText(ctx, `Level ${this.levelIdx}`, new Point(this.stage.canvas.width/2, 32), 'black', '24px sans-serif');
+			}
+			// Draw Stats
+			ctx.save();
+			ctx.globalAlpha = 0.5;
+			ctx.fillStyle = '#faa';
+			ctx.fillRect(0, 50, this.stage.canvas.width, 40);
+			ctx.strokeRect(0, 50, this.stage.canvas.width, 40);
+			ctx.restore();
+			for (let i=0; i<this.stage.player.hp; i++) {
+				ctx.drawImage(sprites['Health'], 10+32*i, 55, 30, 30); 
+			}
+			ctx.drawImage(sprites['Arrows'], this.stage.canvas.width-220, 52, 32, 32); 
+			ctx.drawImage(sprites['Fireballs'], this.stage.canvas.width-150, 52, 32, 32); 
+			ctx.drawImage(sprites['Key'], this.stage.canvas.width-80, 52, 32, 32); 
+            const pArrows = new Point(this.stage.canvas.width-185, 80);
+            const pBalls = new Point(this.stage.canvas.width-115, 80);
+            const pKeys = new Point(this.stage.canvas.width-45, 80);
             pArrows.ljust = true;
             pBalls.ljust = true;
             pKeys.ljust = true;
-            drawText(ctx, `Health: ${this.stage.player.hp}/${this.stage.player.maxhp}`, pHealth, 'black', '18px sans-serif');
-            drawText(ctx, `Arrows: ${this.stage.player.arrows}`, pArrows, 'black', '18px sans-serif');
-            drawText(ctx, `Fireballs: ${this.stage.player.fb}`, pBalls, 'black', '18px sans-serif');
-            drawText(ctx, `Keys: ${this.stage.player.keys}`, pKeys, 'black', '18px sans-serif');
-            drawText(ctx, `Level ${this.levels[this.levelIdx]}`, pLevel, 'black', '18px sans-serif');
+            drawText(ctx, `${this.stage.player.arrows}`, pArrows, 'black', '24px sans-serif');
+            drawText(ctx, `${this.stage.player.fb}`, pBalls, 'black', '24px sans-serif');
+            drawText(ctx, `${this.stage.player.keys}`, pKeys, 'black', '24px sans-serif');
         }
     }
     
@@ -130,7 +151,6 @@ window.addEventListener('load', () => {
     const levels = $$('#levels option').map(opt => opt.value);
     let stage = new Stage(canvas, miniMap);
     const game = new Game({stage, levels});
-	const PLAY_PROC = true;
 
     function nextLevel(first) {
         if (!first) {
