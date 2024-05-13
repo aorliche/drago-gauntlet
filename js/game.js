@@ -139,18 +139,18 @@ window.addEventListener('load', () => {
 		// Play procedurally generated game
 		if (PLAY_PROC) {
 			const idx = game.levelIdx;
-			const levelSize = 20+idx*10;
+			const levelSize = 20+idx*5;
 			let data = makeRooms({size: [levelSize, levelSize], roomSize: [12, 10], roomSizeSigma: [3, 3], nearLimit: 6});
             data = addWater(data, 0.08, 10, 5);
-            data = addTrees(data, 0.5);
-            data = addActors(data, 'C', 0.03);
+            data = addTrees(data, 0.25);
+            data = addActors(data, 'C', 0.03);	// Crates
 			data = addPlayerAndExit(data);
-            data = addActors(data, 'S', 0.02+idx*0.005);
-            data = addActors(data, 'A', 0.02+idx*0.005);
-            data = addActors(data, 'B', 0.005+idx*0.005);
-            data = addActors(data, 'O', 0.015+idx*0.005);
-            data = addActors(data, 'F', 0.01+idx*0.005);
-            data = addActors(data, 'H', 0.01);
+            data = addActors(data, 'S', 0.015+idx*0.0025); // Melee
+            data = addActors(data, 'A', 0.015+idx*0.0025); // Archer
+            data = addActors(data, 'B', 0.005+idx*0.002);  // BigBoy
+            data = addActors(data, 'O', 0.02+idx*0.0025);  // Arrows
+            data = addActors(data, 'F', 0.01+idx*0.005);   // Fireballs
+            data = addActors(data, 'H', 0.01);			   // Health
 			if (first) {
 				stage.loadProc(data);
 				game.loop();
