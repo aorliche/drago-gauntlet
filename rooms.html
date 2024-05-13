@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Maze Test</title>
+    <script src='js/proc.js' type='module'></script>
+    <script type='module'>
+        import {makeRooms} from './js/rooms.js';
+
+		function conv(num) {
+			let str = num.toString();
+			while (str.length < 3) {
+				str = ' ' + str;
+			}
+			return str;
+		}
+
+		function printArr(arr) {
+			let str = "";
+		  for (let item of arr) {
+			if (Array.isArray(item)) str += printArr(item) + '\n';
+			else str += conv(item) + ", ";
+		  }
+		  return str;
+		}
+        window.addEventListener('load', e => {
+			let data = makeRooms({size: [30, 30], roomSize: [12, 10], roomSizeSigma: [3, 3], nearLimit: 6});
+            document.querySelector('#pre').innerText = printArr(data);
+        });
+    </script>
+</head>
+<body>
+    <pre id='pre'>
+    </pre>
+</body>
+</html>

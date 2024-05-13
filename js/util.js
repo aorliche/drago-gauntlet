@@ -1,8 +1,12 @@
 
-export {$, $$, drawText};
+export {$, $$, dist, drawText, shuffle};
 
 const $ = q => document.querySelector(q);
 const $$ = q => [...document.querySelectorAll(q)];
+
+function dist(p1, p2) {
+	return Math.sqrt(Math.pow(p1.x-p2.x,2)+Math.pow(p1.y-p2.y,2));
+}
 
 function drawText(ctx, text, p, color, font, stroke) {
 	ctx.save();
@@ -24,3 +28,10 @@ function drawText(ctx, text, p, color, font, stroke) {
 	return tm;
 }
 
+function shuffle(arr) {
+	for (let i=0; i<arr.length; i++) {
+		const j = Math.floor(Math.random()*arr.length);
+		const k = Math.floor(Math.random()*arr.length);
+		if (j != k) [arr[j],arr[k]] = [arr[k],arr[j]];
+	}
+}

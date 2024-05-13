@@ -1,7 +1,8 @@
 
 import {$, $$, drawText} from './util.js';
 import {clonePoint, Point, Stage} from './stage.js';
-import {addActors, addCells, addRooms, addTrees, addWater, backtrack, makeEmpty} from './proc.js';
+import {addActors, addCells, addTrees, addWater} from './proc.js';
+import {makeRooms} from './rooms.js';
 
 class Game {
     constructor(params) {
@@ -140,10 +141,11 @@ window.addEventListener('load', () => {
         fetch(`levels/${game.levels[game.levelIdx]}`)
         .then(res => res.json())
         .then(data => {
-            data = makeEmpty(125, 125); 
+			data = makeRooms({size: [125, 125], roomSize: [12, 10], roomSizeSigma: [3, 3], nearLimit: 6});
+            //data = makeEmpty(125, 125); 
             //data = backtrack(125, 125);
             //data = addRooms(data, 0.2, 20, 20);
-            data = addCells(data, 100);
+            //data = addCells(data, 100);
             data = addWater(data, 0.08, 10, 5);
             data = addTrees(data, 0.5);
             data = addActors(data, 'C', 0.02);
