@@ -165,11 +165,11 @@ window.addEventListener('load', () => {
             data = addTrees(data, 0.25);
             data = addActors(data, 'C', 0.03);	// Crates
 			data = addPlayerAndExit(data);
-            data = addActors(data, 'S', 0.015+idx*0.0025); // Melee
-            data = addActors(data, 'A', 0.015+idx*0.0025); // Archer
-            data = addActors(data, 'B', 0.005+idx*0.002);  // BigBoy
-            data = addActors(data, 'O', 0.02+idx*0.0025);  // Arrows
-            data = addActors(data, 'F', 0.01+idx*0.005);   // Fireballs
+            data = addActors(data, 'S', 0.015+idx*0.002);  // Melee
+            data = addActors(data, 'A', 0.015+idx*0.002);  // Archer
+            data = addActors(data, 'B', 0.005+idx*0.001);  // BigBoy
+            data = addActors(data, 'O', 0.02+idx*0.001);   // Arrows
+            data = addActors(data, 'F', 0.01+idx*0.001);   // Fireballs
             data = addActors(data, 'H', 0.01);			   // Health
 			if (first) {
 				stage.loadProc(data);

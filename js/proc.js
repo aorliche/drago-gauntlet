@@ -324,6 +324,16 @@ function addActors(cols, type, fct) {
     const ny = cols[0].length;
     const sz = nx*ny;
     const n = Math.round(fct*sz);
+	// Find location of player
+	let pp = {x: 0, y: 0};
+	for (let i=0; i<nx; i++) {
+		for (let j=0; j<ny; j++) {
+			if (cols[i][j] == 'P') {
+				pp = {x: i, y: j};
+				break;
+			}
+		}
+	}
     for (let i=0; i<n; i++) {
         const x = Math.floor(Math.random()*nx); 
         const y = Math.floor(Math.random()*ny);
@@ -333,7 +343,9 @@ function addActors(cols, type, fct) {
             }
             continue;
         }
-        if (x <= 7 || y <= 7) {
+		const p = {x, y};
+		// Don't place enemies starting right next to player
+        if ((type == 'S' || type == 'A' || type == 'B') && dist(p, pp) <= 7) {
             continue;
         }
         // BigBoy takes up 2x2 spaces

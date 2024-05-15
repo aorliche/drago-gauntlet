@@ -376,7 +376,6 @@ class Stage {
                 }
             }
         }
-		console.log(this.actors);
     }
 
     load(json) {
