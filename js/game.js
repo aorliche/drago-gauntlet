@@ -168,8 +168,8 @@ window.addEventListener('load', () => {
             data = addActors(data, 'S', 0.015+idx*0.002);  // Melee
             data = addActors(data, 'A', 0.015+idx*0.002);  // Archer
             data = addActors(data, 'B', 0.005+idx*0.001);  // BigBoy
-            data = addActors(data, 'O', 0.015+idx*0.001);  // Arrows
-            data = addActors(data, 'F', 0.005+idx*0.001);  // Fireballs
+            data = addActors(data, 'O', 0.010+idx*0.0015);  // Arrows
+            data = addActors(data, 'F', 0.005+idx*0.0005);  // Fireballs
             data = addActors(data, 'H', idx > 5 ? 0.005 : 0.01-idx*0.001);	// Health
 			if (first) {
 				stage.loadProc(data);

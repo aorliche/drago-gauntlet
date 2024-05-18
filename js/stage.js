@@ -4,21 +4,21 @@ import {drawText} from './util.js';
 export {clonePoint, Editor, Stage, Point};
 
 const basicColors = {
-    Tree: '#00ff00',
+    Tree: '#00cc00',
     Rocks: '#aaaaaa',
     Water: '#aaaaff',
     Door: '#88ccff',
     Crate: '#ff8833',
     Spider: '#aa00ff',
     Wizard: '#ff33ff',
-    BigBoy: '#000000',
+    BigBoy: '#ff0000',
     Health: '#ffff00',
     Arrows: '#ffff00',
     Fireballs: '#ffff00',
     Key: '#ffff00',
     Delete: '#ff0000',
     Player: '#0000ff',
-    Exit: '#ffaaaa',
+    Exit: '#5555ff',
 };
 
 const bgColor = '#bbffaa';
@@ -168,6 +168,7 @@ class Editor {
 
 class Stage {
     constructor(canvas, miniMap) {
+		this.visited = {}; // For mini map
         this.projectiles = [];
         // Terrain and loot
         this.terrain = {};
@@ -261,9 +262,17 @@ class Stage {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.restore();
         this.miniCtx.save();
-        this.miniCtx.fillStyle = bgColor;
+        this.miniCtx.fillStyle = '#121';
         this.miniCtx.fillRect(0, 0, this.miniMap.width, this.miniMap.height);
         this.miniCtx.restore();
+		// Draw visited in mini
+		for (let p in this.visited) {
+			p = p.split(',');
+			p = {x: parseInt(p[0])*this.gridSize, y: parseInt(p[1])*this.gridSize};
+			p = this.xformMini(p);
+			this.miniCtx.fillStyle = '#252';
+			this.miniCtx.fillRect(p.x, p.y, 4, 4);
+		}
         if (this.showGrid) {
             let sx = this.pos.x-this.canvas.width/2 - this.gridSize;
             sx = sx - (sx % this.gridSize);
@@ -531,14 +540,14 @@ class Stage {
     }
 
     xformMini(p) {
-        const cx = this.pos.x/this.gridSize;
+        /*const cx = this.pos.x/this.gridSize;
         const cy = this.pos.y/this.gridSize;
         const px = p.x/this.gridSize;
-        const py = p.y/this.gridSize;
+        const py = p.y/this.gridSize;*/
         //const x = px - cx + this.miniMap.width/2;
         //const y = cy - py + this.miniMap.height/2;
-        const x = px + this.miniMap.width/2;
-        const y = this.miniMap.height/2 - py;
+        const x = (p.x - this.pos.x)/this.gridSize*4 + this.miniMap.width/2;
+        const y = (this.pos.y - p.y)/this.gridSize*4 + this.miniMap.height/2;
         return new Point(x, y);
     }
 
@@ -600,9 +609,11 @@ class Actor {
     drawMini() {
         const ctx = this.stage.miniCtx;
         const p = this.stage.xformMini(this.pos);
+		const str = posStr(this.pos, this.stage);
+		if (!this.stage.visited[str]) return;
         ctx.save();
         ctx.fillStyle = basicColors[this.type];
-        ctx.fillRect(p.x, p.y-this.size.y/this.stage.gridSize, this.size.x/this.stage.gridSize, this.size.y/this.stage.gridSize);
+        ctx.fillRect(p.x, p.y-this.size.y/this.stage.gridSize*4, this.size.x/this.stage.gridSize*4, this.size.y/this.stage.gridSize*4);
         ctx.restore();
     }
 
@@ -632,7 +643,20 @@ class Actor {
         if (act) {
             throw `Actor ${act.type} already exists at ${this.pos}`;
         }
-        grid[posStr(this.pos, this.stage)] = this;
+		const str = posStr(this.pos, this.stage);
+        grid[str] = this;
+		// Update visited
+		if (this instanceof Player) {
+			const parts = str.split(',');
+			const x = parseInt(parts[0]);
+			const y = parseInt(parts[1]);
+			for (let i=-8; i<=8; i++) {
+				for (let j=-8; j<=8; j++) {
+					const vstr = (x+i).toString() + ',' + (y+j).toString();
+					this.stage.visited[vstr] = true;
+				}
+			}
+		}
     }
 
     remove() {
@@ -878,6 +902,7 @@ class BigBoy extends Actor {
         if (this.hp < this.maxhp) {
             this.drawHealth();
         }
+		this.drawMini();
     }
     
     drawHealth() {
