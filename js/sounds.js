@@ -7,8 +7,8 @@ export class Sounds {
 		this.music = {};
 		this.soundGainNode = new GainNode(this.ctx);
 		this.soundGainNode.connect(this.ctx.destination);
-        this.SOUNDSVOL = 1/2;
-        this.MUSICVOL = 1/4;
+        this.SOUNDSVOL = 1/2; //1/2;
+        this.MUSICVOL = 1/4; //1/4;
 		this.gain = 1;
 	}
 

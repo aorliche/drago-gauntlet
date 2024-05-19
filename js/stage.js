@@ -688,6 +688,13 @@ class Actor {
                 this.remove();
             }
         }
+		if (this instanceof Spider || this instanceof Wizard) {
+			this.stage.sounds.play('hit_goblin.mp3');
+		} else if (this instanceof Player) {
+			this.stage.sounds.play('hit_player.mp3');
+		} else if (this instanceof BigBoy) {
+			this.stage.sounds.play('hit_ferris.mp3');
+		}
     }
 }
 
@@ -834,6 +841,7 @@ class Wizard extends Actor {
                 ud: Math.sign(dy),
                 shooter: this,
             }));
+			this.stage.sounds.play('arrow.mp3');
         } else if (Math.abs(dy) <= this.stage.gridSize-1) {
             const p = clonePoint(this.pos);
             p.x += this.size.x/2;
@@ -845,6 +853,7 @@ class Wizard extends Actor {
                 ud: 0,
                 shooter: this,
             }));
+			this.stage.sounds.play('arrow.mp3');
         } else if (Math.abs(dx) < Math.abs(dy)) {
             const sav = clonePoint(this.pos);
             this.remove();
@@ -1032,6 +1041,7 @@ class Player extends Actor {
             shooter: this,
         }));
         this.fb -= 1;
+		this.stage.sounds.play('fireball.mp3');
         return true;
     }
     
@@ -1089,6 +1099,9 @@ class Player extends Actor {
             }
         }
         if (moved) {
+			/*if (Math.random() > 0.3) {
+				this.stage.sounds.play('step.mp3');
+			}*/
             const obj = this.stage.collides(this);
             if (obj && obj instanceof Crate) {
                 // Shove a crate
@@ -1127,6 +1140,7 @@ class Player extends Actor {
             } else if (obj && obj.type === 'Exit') {
                 // Reach an exit
                 if (this.stage.nextLevelCb) {
+					this.stage.sounds.play('level_up.mp3');
                     this.stage.nextLevelCb();
                 }
             } else if (obj && obj.type === 'Door' && this.keys) {
@@ -1170,6 +1184,7 @@ class Player extends Actor {
             ud: this.lastud,
             shooter: this,
         }));
+		this.stage.sounds.play('arrow.mp3');
         this.arrows -= 1;
         return true;
     }

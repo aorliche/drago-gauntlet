@@ -3,6 +3,7 @@ import {$, $$, drawText} from './util.js';
 import {clonePoint, Point, Stage} from './stage.js';
 import {addActors, addCells, addPlayerAndExit, addTrees, addWater} from './proc.js';
 import {makeRooms} from './rooms.js';
+import {Sounds} from './sounds.js';
 	
 const PLAY_PROC = true;
 
@@ -12,6 +13,14 @@ class Game {
         this.stage.showGrid = false;
         this.levels = params.levels;
         this.levelIdx = 0;
+		this.sounds = new Sounds();
+		this.stage.sounds = this.sounds;
+		// Load sounds
+		['hit_player.mp3', 'step.mp3', 'fireball.mp3', 'arrow.mp3', 'level_up.mp3', 'hit_ferris.mp3', 'hit_goblin.mp3'].map(snd => {
+			this.sounds.load(snd, '/sounds/' + snd);
+		});
+		this.sounds.loadMusic('piano_loop.mp3', '/sounds/piano_loop.mp3');
+		this.playing = false;
     }
     
     draw() {
@@ -55,6 +64,10 @@ class Game {
     }
     
     keydown(e) {
+		if (!this.playing) {
+			this.sounds.playMusic('piano_loop.mp3');
+			this.playing = true;
+		}
         if (!this.stage.player) {
             return;
         }
@@ -185,6 +198,7 @@ window.addEventListener('load', () => {
 				stage = nstage;
 				game.stage = stage;
 				game.stage.nextLevelCb = nextLevel;
+				game.stage.sounds = game.sounds;
                 stage.loadProc(data);
                 stage.player.state = st;
             }
