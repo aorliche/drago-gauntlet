@@ -36,7 +36,20 @@ natsort($levels);
             </select>
         </div>
         <div id='right'>
-            <canvas id="game-minimap" width="200" height="200"></canvas>
+			<canvas id="game-minimap" width="200" height="200"></canvas>
+			<h2>Level <span id='level'></span></h2>
+			<div id='health'></div>
+			<table>
+			<tr>
+				<td><img src="images/Arrows.png"></td><td id='arrows'></td>
+			</tr>
+			<tr>
+				<td><img src="images/Fireballs.png"></td><td id='fireballs'></td>
+			</tr>
+			<tr>
+				<td><img src="images/Key.png"></td><td id='key'></td>
+			</tr>
+			</table>
         </div>
     </div>
 </body>

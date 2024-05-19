@@ -3,5 +3,29 @@
 }
 
 #game-minimap {
+}
+
+#health {
+	height: 20px;
+	margin-bottom: 10px;
+	background-color: #afa;
+}
+
+#right {
 	margin-left: 10px;
+	text-align: center;
+}
+
+#right h2 {
+	margin-bottom: 10px;
+}
+
+#right table {
+	font-weight: bold;
+	font-size: 18px;
+}
+
+#right #health {
+	padding: 5px;
+	border: 1px solid black;
 }

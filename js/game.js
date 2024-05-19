@@ -21,12 +21,29 @@ class Game {
 		});
 		this.sounds.loadMusic('piano_loop.mp3', '/sounds/piano_loop.mp3');
 		this.playing = false;
+		this.lastHealth = 0;
+		this.healthBar = ['#8f8', '#8f8', '#beb', '#beb', '#beb', '#faa', '#faa', '#faa', '#f88', '#f88', '#f88'];
     }
     
     draw() {
         this.stage.draw();
         if (this.stage.player) {
-            const ctx = this.stage.ctx;
+			$('#level').innerText = this.levelIdx;
+			if (this.stage.player.hp != this.lastHealth) {
+				$('#health').innerHTML = '';
+				$('#health').style.backgroundColor = this.healthBar[10-this.stage.player.hp];
+				for (let i=0; i<this.stage.player.hp; i++) {
+					const img = new Image();
+					img.src = '/images/Health.png';
+					img.width = 20;
+					$('#health').appendChild(img);
+				}
+				this.lastHealth = this.stage.player.hp;
+			}
+			$('#arrows').innerText = this.stage.player.arrows;
+			$('#fireballs').innerText = this.stage.player.fb;
+			$('#key').innerText = this.stage.player.keys;
+            /*const ctx = this.stage.ctx;
 			const sprites = this.stage.sprites;
 			// Draw level
 			ctx.save();
@@ -59,7 +76,7 @@ class Game {
             pKeys.ljust = true;
             drawText(ctx, `${this.stage.player.arrows}`, pArrows, 'black', '24px sans-serif');
             drawText(ctx, `${this.stage.player.fb}`, pBalls, 'black', '24px sans-serif');
-            drawText(ctx, `${this.stage.player.keys}`, pKeys, 'black', '24px sans-serif');
+            drawText(ctx, `${this.stage.player.keys}`, pKeys, 'black', '24px sans-serif');*/
         }
     }
     
