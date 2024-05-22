@@ -37,19 +37,25 @@ natsort($levels);
         </div>
         <div id='right'>
 			<canvas id="game-minimap" width="200" height="200"></canvas>
-			<h2>Level <span id='level'></span></h2>
-			<div id='health'></div>
+			<h2>Level <span id='level'>0</span></h2>
+			<div id='health'><img src='/images/Health.png' height='20'></div>
 			<table>
 			<tr>
-				<td><img src="images/Arrows.png"></td><td id='arrows'></td>
+				<td><img src="images/Arrows.png"></td><td id='arrows'> - </td>
 			</tr>
 			<tr>
-				<td><img src="images/Fireballs.png"></td><td id='fireballs'></td>
+				<td><img src="images/Fireballs.png"></td><td id='fireballs'> - </td>
 			</tr>
 			<tr>
-				<td><img src="images/Key.png"></td><td id='key'></td>
+				<td><img src="images/Key.png"></td><td id='key'> - </td>
 			</tr>
-			</table>
+			</table><br>
+			<h2 id='controls'>Controls</h2>
+			<ul>
+				<li>Move: arrow keys</li>
+				<li>Shoot: space bar</li>
+				<li>Fireball: alt key</li>
+			<ul>
         </div>
     </div>
 </body>

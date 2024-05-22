@@ -23,9 +23,18 @@
 #right table {
 	font-weight: bold;
 	font-size: 18px;
+	margin-left: 10px;
 }
 
 #right #health {
 	padding: 5px;
 	border: 1px solid black;
+}
+
+#right ul {
+	text-align: left;
+}
+
+#right h2#controls {
+	margin-top: 5px;
 }

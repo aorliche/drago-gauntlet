@@ -21,11 +21,44 @@ class Game {
 		});
 		this.sounds.loadMusic('piano_loop.mp3', '/sounds/piano_loop.mp3');
 		this.playing = false;
+		this.splashLoaded = false;
+		this.titleLoaded = false;
 		this.lastHealth = 0;
 		this.healthBar = ['#8f8', '#8f8', '#beb', '#beb', '#beb', '#faa', '#faa', '#faa', '#f88', '#f88', '#f88'];
+		// Load splash screen art
+		this.splashImg = new Image();
+		this.splashImg.src = '/images/Art/GauntletStart.png';
+		this.splashImg.onload = () => {
+			this.splashLoaded = true;
+		};
+		this.titleImg = new Image();
+		this.titleImg.src = '/images/Art/title-splash.png';
+		this.titleImg.onload = () => {
+			this.titleLoaded = true;
+		};
     }
     
     draw() {
+		if (!this.playing) {
+			const w = this.stage.canvas.width;
+			const h = this.stage.canvas.height
+			this.stage.ctx.fillStyle = '#fff';
+			this.stage.ctx.fillRect(0, 0, w, h);
+			if (this.splashLoaded && this.titleLoaded) {
+				const h1 = this.splashImg.height;
+				const h2 = this.titleImg.height;
+				const w1 = this.splashImg.width;
+				const w2 = this.titleImg.width;
+				this.stage.ctx.fillStyle = '#cfc';
+				this.stage.ctx.fillRect(0, 75, w, 450);
+				this.stage.ctx.strokeRect(0, 75, w, 450);
+				this.stage.ctx.drawImage(this.splashImg, w/2-400/2, h/2-300/2-50, 400, 300);
+				this.stage.ctx.strokeRect(w/2-400/2, h/2-300/2-50, 400, 300);
+				this.stage.ctx.drawImage(this.titleImg, w/2-w2/2, h/2+300/2-60, w2, h2);
+				drawText(this.stage.ctx, "Press an action key to start...", {x: w/2, y: h/2+300/2+50}, '#000', '18px sans');
+			}
+			return;
+		}
         this.stage.draw();
         if (this.stage.player) {
 			$('#level').innerText = this.levelIdx;
@@ -43,40 +76,6 @@ class Game {
 			$('#arrows').innerText = this.stage.player.arrows;
 			$('#fireballs').innerText = this.stage.player.fb;
 			$('#key').innerText = this.stage.player.keys;
-            /*const ctx = this.stage.ctx;
-			const sprites = this.stage.sprites;
-			// Draw level
-			ctx.save();
-			ctx.globalAlpha = 0.8;
-			ctx.fillStyle = '#aaf';
-			ctx.fillRect(0, 5, this.stage.canvas.width, 40);
-			ctx.strokeRect(0, 5, this.stage.canvas.width, 40);
-			ctx.restore();
-			if (PLAY_PROC) {
-				drawText(ctx, `Level ${this.levelIdx}`, new Point(this.stage.canvas.width/2, 32), 'black', '24px sans-serif');
-			}
-			// Draw Stats
-			ctx.save();
-			ctx.globalAlpha = 0.5;
-			ctx.fillStyle = '#faa';
-			ctx.fillRect(0, 50, this.stage.canvas.width, 40);
-			ctx.strokeRect(0, 50, this.stage.canvas.width, 40);
-			ctx.restore();
-			for (let i=0; i<this.stage.player.hp; i++) {
-				ctx.drawImage(sprites['Health'], 10+32*i, 55, 30, 30); 
-			}
-			ctx.drawImage(sprites['Arrows'], this.stage.canvas.width-220, 52, 32, 32); 
-			ctx.drawImage(sprites['Fireballs'], this.stage.canvas.width-150, 52, 32, 32); 
-			ctx.drawImage(sprites['Key'], this.stage.canvas.width-80, 52, 32, 32); 
-            const pArrows = new Point(this.stage.canvas.width-185, 80);
-            const pBalls = new Point(this.stage.canvas.width-115, 80);
-            const pKeys = new Point(this.stage.canvas.width-45, 80);
-            pArrows.ljust = true;
-            pBalls.ljust = true;
-            pKeys.ljust = true;
-            drawText(ctx, `${this.stage.player.arrows}`, pArrows, 'black', '24px sans-serif');
-            drawText(ctx, `${this.stage.player.fb}`, pBalls, 'black', '24px sans-serif');
-            drawText(ctx, `${this.stage.player.keys}`, pKeys, 'black', '24px sans-serif');*/
         }
     }
     
