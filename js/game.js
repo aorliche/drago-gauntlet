@@ -36,6 +36,9 @@ class Game {
 		this.titleImg.onload = () => {
 			this.titleLoaded = true;
 		};
+		this.startts = 0;
+		this.nowts = 0;
+		this.score = 0;
     }
     
     draw() {
@@ -76,13 +79,29 @@ class Game {
 			$('#arrows').innerText = this.stage.player.arrows;
 			$('#fireballs').innerText = this.stage.player.fb;
 			$('#key').innerText = this.stage.player.keys;
+			const time = Math.floor((this.nowts - this.startts)/1000);
+			const minutes = Math.floor(time/60);
+			let seconds = time%60;
+			seconds = seconds <= 9 ? "0" + seconds : seconds;
+			$('#time').innerText = `Time: ${minutes}:${seconds}`;
+			$('#score').innerText = `Score: ${this.score}`;
+			// Death screen
+			if (this.stage.player.hp <= 0) {
+				this.stage.ctx.save();
+				this.stage.ctx.fillStyle = '#f00';
+				this.stage.ctx.globalAlpha = 0.3;
+				this.stage.ctx.fillRect(0, 100, this.stage.canvas.width, this.stage.canvas.height-200);
+				this.stage.ctx.restore();
+				drawText(this.stage.ctx, "You have died...", {x: this.stage.canvas.width/2, y: 300}, '#fff', 'bold 64px sans', true);
+			}
         }
     }
     
     keydown(e) {
-		if (!this.playing) {
+		if (e.key !== 'Alt' && !this.playing) {
 			this.sounds.playMusic('piano_loop.mp3');
 			this.playing = true;
+			return;
 		}
         if (!this.stage.player) {
             return;
@@ -148,8 +167,10 @@ class Game {
                 return;
             }
             if (prev === null) {
+				self.startts = ts;
                 prev = ts;
             } else {
+				self.nowts = ts;
                 const dt = Math.round(1000/30);
                 const next = prev + dt;
                 if (ts < next) {
@@ -180,6 +201,7 @@ window.addEventListener('load', () => {
     const levels = $$('#levels option').map(opt => opt.value);
     let stage = new Stage(canvas, miniMap);
     const game = new Game({stage, levels});
+	stage.game = game;
 
     function nextLevel(first) {
         if (!first) {
@@ -212,6 +234,7 @@ window.addEventListener('load', () => {
 				const nstage = new Stage(canvas, miniMap);
 				nstage.sprites = stage.sprites;
 				stage = nstage;
+				stage.game = game;
 				game.stage = stage;
 				game.stage.nextLevelCb = nextLevel;
 				game.stage.sounds = game.sounds;
@@ -252,4 +275,9 @@ window.addEventListener('load', () => {
     document.addEventListener('keyup', (e) => {
         game.keyup(e);
     });
+
+	document.addEventListener('click', (e) => {
+		document.dispatchEvent(new KeyboardEvent('keydown', {code: 'ArrowLeft'}));
+		document.dispatchEvent(new KeyboardEvent('keyup', {code: 'ArrowLeft'}));
+	});
 });

@@ -684,7 +684,17 @@ class Actor {
             this.hp = 0;
         }
         if (this.hp <= 0) {
-            if (!(this instanceof Player)) {
+            if (this instanceof Player) {
+				setTimeout(() => {
+					this.stage.game.stoploop = true;
+					this.stage.game.sounds.stopMusic('piano_loop.mp3');
+				}, 50);
+			} else {
+				if (this instanceof BigBoy) {
+					this.stage.game.score += 5;
+				} else {
+					this.stage.game.score += 2;
+				}
                 this.remove();
             }
         }
@@ -1140,6 +1150,7 @@ class Player extends Actor {
             } else if (obj && obj.type === 'Exit') {
                 // Reach an exit
                 if (this.stage.nextLevelCb) {
+					this.stage.game.score += (this.stage.game.levelIdx+1)*50;
 					this.stage.sounds.play('level_up.mp3');
                     this.stage.nextLevelCb();
                 }

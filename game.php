@@ -21,6 +21,7 @@ natsort($levels);
     <title>DragoGauntlet</title>
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/game.css">
+	<link rel="icon" type="image/png" href="/images/Gopher.png">
 </head>
 <body>
     <h1>DragoGauntlet</h1>
@@ -38,6 +39,8 @@ natsort($levels);
         <div id='right'>
 			<canvas id="game-minimap" width="200" height="200"></canvas>
 			<h2>Level <span id='level'>0</span></h2>
+			<div id='time'>Time: 0:00</div>
+			<div id='score'>Score: 0</div>
 			<div id='health'><img src='/images/Health.png' height='20'></div>
 			<table>
 			<tr>
@@ -52,9 +55,9 @@ natsort($levels);
 			</table><br>
 			<h2 id='controls'>Controls</h2>
 			<ul>
-				<li>Move: arrow keys</li>
-				<li>Shoot: space bar</li>
-				<li>Fireball: alt key</li>
+				<li><img src='images/Art/ControlsArrows.png' height='20'> <span>Move</span></li>
+				<li><img src='images/Art/ControlsSpaceBar.png' height='20'> <span>Shoot</span></li>
+				<li><img src='images/Art/ControlsAlt.png' height='20'> <span>Fireball</span></li>
 			<ul>
         </div>
     </div>
