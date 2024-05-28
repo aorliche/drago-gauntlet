@@ -24,7 +24,7 @@ natsort($levels);
 	<link rel="icon" type="image/png" href="/images/Gopher.png">
 </head>
 <body>
-    <h1>DragoGauntlet</h1>
+    <!--<h1>DragoGauntlet</h1>-->
     <div id="content">
         <div id="main">
             <canvas id="game-canvas" width="600" height="600"></canvas>

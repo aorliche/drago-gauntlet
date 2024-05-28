@@ -3,6 +3,12 @@
 }
 
 #game-minimap {
+	background-color: #fff;
+}
+
+body {
+	padding: 5 px;
+	background: url('/images/Art/Wood.png');
 }
 
 #health {
@@ -11,9 +17,16 @@
 	background-color: #afa;
 }
 
+#main {
+	background: #ffffffaa;
+	padding: 10px;
+}
+
 #right {
 	margin-left: 10px;
 	text-align: center;
+	background: #ffffffaa;
+	padding: 10px;
 }
 
 #right h2 {

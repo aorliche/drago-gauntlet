@@ -753,6 +753,7 @@ class Crate extends Actor {
             this.place();
             return false;
         }
+		this.stage.sounds.play('step.mp3');
         this.place();
         return true;
     }
