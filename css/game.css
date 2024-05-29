@@ -6,10 +6,10 @@
 	background-color: #fff;
 }
 
-body {
+/*body {
 	padding: 5 px;
 	background: url('/images/Art/Wood.png');
-}
+}*/
 
 #health {
 	height: 20px;
@@ -17,16 +17,17 @@ body {
 	background-color: #afa;
 }
 
-#main {
+/*#main {
 	background: #ffffffaa;
 	padding: 10px;
-}
+}*/
 
 #right {
 	margin-left: 10px;
 	text-align: center;
-	background: #ffffffaa;
+	/*background: #ffffffaa;*/
 	padding: 10px;
+	border: 1px solid black;
 }
 
 #right h2 {
