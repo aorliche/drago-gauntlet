@@ -41,7 +41,7 @@ natsort($levels);
 			<h2>Level <span id='level'>0</span></h2>
 			<div id='time'>Time: 0:00</div>
 			<div id='score'>Score: 0</div>
-			<div id='health'><img src='/images/Health.png' height='20'></div>
+			<div id='health'><img src='images/Health.png' height='20'></div>
 			<table>
 			<tr>
 				<td><img src="images/Arrows.png"></td><td id='arrows'> - </td>
