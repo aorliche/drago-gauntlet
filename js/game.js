@@ -70,7 +70,7 @@ class Game {
 				$('#health').style.backgroundColor = this.healthBar[10-this.stage.player.hp];
 				for (let i=0; i<this.stage.player.hp; i++) {
 					const img = new Image();
-					img.src = '/images/Health.png';
+					img.src = 'images/Health.png';
 					img.width = 20;
 					$('#health').appendChild(img);
 				}
