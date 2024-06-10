@@ -152,7 +152,7 @@ function pathExists(cols, p1, p2) {
 		for (let i=0; i<dirs.length; i++) {
 			const x = p[0]+dirs[i][0];
 			const y = p[1]+dirs[i][1];
-			if (x < 0 || x >= m || y < 0 || y >= n || cols[x][y] != ' ' || visited[x][y]) {
+			if (x < 0 || x >= m || y < 0 || y >= n || (cols[x][y] != ' ' && cols[x][y] != 'K' && cols[x][y] != 'D') || visited[x][y]) {
 				continue;
 			}
 			visited[x][y] = true;

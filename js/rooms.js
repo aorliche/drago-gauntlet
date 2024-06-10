@@ -10,12 +10,14 @@ function makeRooms(params) {
 	const roomsTgt = 0.8*size[0]*size[1];
 	const centers = [];
 	const rooms = make2dArray(size[0], size[1], -1);
+	const roomPoints = [];
 	let nInRooms = 0;
 	outer:
 	for (let i=0; i<500; i++) {
 		if (nInRooms > roomsTgt) {
 			break;
 		}
+		roomPoints.push([]);
 		const c = Math.floor(Math.random()*size[0]);
 		const r = Math.floor(Math.random()*size[1]);
 		const p = {x: c, y: r};
@@ -39,6 +41,7 @@ function makeRooms(params) {
 				if (y < 0 || y >= size[1]) continue;
 				if (rooms[x][y] == -1) {
 					rooms[x][y] = i;
+					roomPoints[i].push([x, y]);
 					nInRooms++;
 				}
 			}
@@ -79,7 +82,22 @@ function makeRooms(params) {
 			}
 		}
 		doors.push([r1, r2]);
-		map[x][y] = ' ';
+		if (Math.random() < 0.3) {
+			map[x][y] = 'D';
+		} else {
+			map[x][y] = ' ';
+		}
+	}
+	// Place keys
+	for (let i=0; i<roomPoints.length; i++) {
+		// This can sometimes happen
+		if (roomPoints[i].length == 0) {
+			continue;
+		}
+		const idx = Math.floor(Math.random()*roomPoints[i].length);
+		const r = roomPoints[i][idx][0];
+		const c = roomPoints[i][idx][1]; 
+		map[r][c] = 'K';
 	}
 	const map2 = make2dArray(size[0]+2, size[1]+2, 'R');
 	for (let i=0; i<size[0]; i++) {
