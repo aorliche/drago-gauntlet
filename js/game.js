@@ -269,10 +269,12 @@ window.addEventListener('load', () => {
 	game.stage.loadSprites(() => nextLevel(true));
 
     document.addEventListener('keydown', (e) => {
+		e.preventDefault();
         game.keydown(e);
     });
     
     document.addEventListener('keyup', (e) => {
+		e.preventDefault();
         game.keyup(e);
     });
 
