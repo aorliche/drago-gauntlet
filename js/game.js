@@ -17,9 +17,9 @@ class Game {
 		this.stage.sounds = this.sounds;
 		// Load sounds
 		['hit_player.mp3', 'step.mp3', 'fireball.mp3', 'arrow.mp3', 'level_up.mp3', 'hit_ferris.mp3', 'hit_goblin.mp3'].map(snd => {
-			this.sounds.load(snd, '../sounds/' + snd);
+			this.sounds.load(snd, 'sounds/' + snd);
 		});
-		this.sounds.loadMusic('piano_loop.mp3', '../sounds/piano_loop.mp3');
+		this.sounds.loadMusic('piano_loop.mp3', 'sounds/piano_loop.mp3');
 		this.playing = false;
 		this.splashLoaded = false;
 		this.titleLoaded = false;
@@ -27,12 +27,12 @@ class Game {
 		this.healthBar = ['#8f8', '#8f8', '#beb', '#beb', '#beb', '#faa', '#faa', '#faa', '#f88', '#f88', '#f88'];
 		// Load splash screen art
 		this.splashImg = new Image();
-		this.splashImg.src = '/images/Art/GauntletStart.png';
+		this.splashImg.src = 'images/Art/GauntletStart.png';
 		this.splashImg.onload = () => {
 			this.splashLoaded = true;
 		};
 		this.titleImg = new Image();
-		this.titleImg.src = '/images/Art/title-splash.png';
+		this.titleImg.src = 'images/Art/title-splash.png';
 		this.titleImg.onload = () => {
 			this.titleLoaded = true;
 		};
