@@ -19,8 +19,8 @@ natsort($levels);
     <script src="js/util.js" type='module'></script>
     <script src="js/game.js" type='module'></script>
     <title>DragoGauntlet</title>
-    <link rel="stylesheet" href="../css/main.css">
-    <link rel="stylesheet" href="../css/game.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/game.css">
 	<link rel="icon" type="image/png" href="/images/Gopher.png">
 </head>
 <body>
