@@ -165,6 +165,52 @@ function pathExists(cols, p1, p2) {
 	return false;
 }
 
+function hasDoors(cols) {
+	const m = cols.length;
+	const n = cols[0].length;
+	for (let i=0; i<m; i++) {
+		for (let j=0; j<n; j++) {
+			if (cols[i][j] == 'D') {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+function canReachKeyAndDoor(cols, p) {
+	const frontier = [p];
+	const m = cols.length;
+	const n = cols[0].length;
+	const visited = make2dArray(m, n, false);
+	visited[p[0]][p[1]] = true;
+	const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+	let gotKey = false;
+	let gotDoor = false;
+	while (frontier.length > 0) {
+		const p = frontier.pop();
+		for (let i=0; i<dirs.length; i++) {
+			const x = p[0]+dirs[i][0];
+			const y = p[1]+dirs[i][1];
+			if (cols[x][y] == 'K') {
+				gotKey = true;
+			}
+			if (cols[x][y] == 'D') {
+				gotDoor = true;
+			}
+			if (gotKey && gotDoor) {
+				return true;
+			}
+			if (x < 0 || x >= m || y < 0 || y >= n || cols[x][y] != ' ' || visited[x][y]) {
+				continue;
+			}
+			visited[x][y] = true;
+			frontier.push([x,y]);
+		}
+	}
+	return false;
+}
+
 function addPlayerAndExit(cols) {
 	const empty = [];
 	const m = cols.length;
@@ -177,11 +223,17 @@ function addPlayerAndExit(cols) {
 		}
 	}
 	shuffle(empty);
+	const doors = hasDoors(cols);
 	for (let i=0; i<empty.length-1; i++) {
 		const p1 = {x: empty[i][0], y: empty[i][1]};
 		const p2 = {x: empty[i+1][0], y: empty[i+1][1]};
 		// Long-ish paths only
 		if (dist(p1, p2) < 20) {
+			continue;
+		}
+		// No whamy starts
+		if (doors && !canReachKeyAndDoor(cols, [p1.x, p1.y])) {
+			console.log('bad');
 			continue;
 		}
 		if (pathExists(cols, empty[i], empty[i+1])) {
